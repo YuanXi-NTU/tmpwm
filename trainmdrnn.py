@@ -6,14 +6,15 @@ from os import mkdir
 import torch
 import torch.nn.functional as f
 from torch.utils.data import DataLoader
-from torchvision import transforms
+# from torchvision import transforms
 import numpy as np
 from tqdm import tqdm
 from utils.misc import save_checkpoint
 from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
 from utils.learning import EarlyStopping
 ## WARNING : THIS SHOULD BE REPLACED WITH PYTORCH 0.5
-from utils.learning import ReduceLROnPlateau
+# from utils.learning import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from data.loaders import RolloutSequenceDataset
 from models.vae import VAE
@@ -72,14 +73,14 @@ if exists(rnn_file) and not args.noreload:
 
 
 # Data Loading
-transform = transforms.Lambda(
-    lambda x: np.transpose(x, (0, 3, 1, 2)) / 255)
-train_loader = DataLoader(
-    RolloutSequenceDataset('datasets/carracing', SEQ_LEN, transform, buffer_size=30),
-    batch_size=BSIZE, num_workers=8, shuffle=True)
-test_loader = DataLoader(
-    RolloutSequenceDataset('datasets/carracing', SEQ_LEN, transform, train=False, buffer_size=10),
-    batch_size=BSIZE, num_workers=8)
+# transform = transforms.Lambda(
+#     lambda x: np.transpose(x, (0, 3, 1, 2)) / 255)
+# train_loader = DataLoader(
+#     RolloutSequenceDataset('datasets/carracing', SEQ_LEN, transform, buffer_size=30),
+#     batch_size=BSIZE, num_workers=8, shuffle=True)
+# test_loader = DataLoader(
+#     RolloutSequenceDataset('datasets/carracing', SEQ_LEN, transform, train=False, buffer_size=10),
+#     batch_size=BSIZE, num_workers=8)
 
 def to_latent(obs, next_obs):
     """ Transform observations to latent space.

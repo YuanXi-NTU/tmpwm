@@ -13,16 +13,19 @@ from torchvision.utils import save_image
 from models.vae import VAE
 
 from utils.misc import save_checkpoint
-from utils.misc import LSIZE, RED_SIZE
+# from utils.misc import LSIZE, RED_SIZE
 ## WARNING : THIS SHOULD BE REPLACE WITH PYTORCH 0.5
 from utils.learning import EarlyStopping
-from utils.learning import ReduceLROnPlateau
+# from utils.learning import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from data.loaders import RolloutObservationDataset
 
 parser = argparse.ArgumentParser(description='VAE Trainer')
-parser.add_argument('--batch-size', type=int, default=32, metavar='N',
+parser.add_argument('--batch-size', type=int, default=4096, metavar='N',
                     help='input batch size for training (default: 32)')
-parser.add_argument('--epochs', type=int, default=1000, metavar='N',
+parser.add_argument('--epochs', type=int, default=10, metavar='N',
+                    help='number of epochs to train (default: 1000)')
+parser.add_argument('--hidden-size', type=int, default=64, metavar='N',
                     help='number of epochs to train (default: 1000)')
 parser.add_argument('--logdir', type=str, help='Directory where results are logged')
 parser.add_argument('--noreload', action='store_true',
@@ -35,38 +38,24 @@ args = parser.parse_args()
 cuda = torch.cuda.is_available()
 
 
-torch.manual_seed(123)
+torch.manual_seed(42)
 # Fix numeric divergence due to bug in Cudnn
 torch.backends.cudnn.benchmark = True
 
 device = torch.device("cuda" if cuda else "cpu")
 
 
-transform_train = transforms.Compose([
-    transforms.ToPILImage(),
-    transforms.Resize((RED_SIZE, RED_SIZE)),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-])
-
-transform_test = transforms.Compose([
-    transforms.ToPILImage(),
-    transforms.Resize((RED_SIZE, RED_SIZE)),
-    transforms.ToTensor(),
-])
-
 dataset_train = RolloutObservationDataset('datasets/carracing',
-                                          transform_train, train=True)
+                                          None, train=True)
 dataset_test = RolloutObservationDataset('datasets/carracing',
-                                         transform_test, train=False)
+                                         None, train=False)
 train_loader = torch.utils.data.DataLoader(
     dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=2)
 test_loader = torch.utils.data.DataLoader(
     dataset_test, batch_size=args.batch_size, shuffle=True, num_workers=2)
 
-
-model = VAE(3, LSIZE).to(device)
-optimizer = optim.Adam(model.parameters())
+model = VAE(68, 60,args.hidden_size).to(device)#input shape: 60+8(action+obs), output: 60(obs)
+optimizer = optim.Adam(model.parameters(),lr=3e-5)
 scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
 earlystopping = EarlyStopping('min', patience=30)
 
@@ -86,13 +75,17 @@ def loss_function(recon_x, x, mu, logsigma):
 def train(epoch):
     """ One training epoch """
     model.train()
-    dataset_train.load_next_buffer()
+    # dataset_train.load_next_buffer()
     train_loss = 0
     for batch_idx, data in enumerate(train_loader):
+
         data = data.to(device)
+        obs,action,next_obs=data[0],data[1],data[2]
+        input=torch.cat([obs,action],dim=1)
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
-        loss = loss_function(recon_batch, data, mu, logvar)
+        loss = loss_function(recon_batch, next_obs, mu, logvar)
+
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
@@ -109,18 +102,26 @@ def train(epoch):
 def test():
     """ One test epoch """
     model.eval()
-    dataset_test.load_next_buffer()
+    # dataset_test.load_next_buffer()
     test_loss = 0
     with torch.no_grad():
         for data in test_loader:
             data = data.to(device)
+
+            data = data.to(device)
+            obs, action, next_obs = data[0], data[1], data[2]
+            input = torch.cat([obs, action], dim=1)
+            optimizer.zero_grad()
             recon_batch, mu, logvar = model(data)
-            test_loss += loss_function(recon_batch, data, mu, logvar).item()
+            loss = loss_function(recon_batch, next_obs, mu, logvar)
+            test_loss+=loss
+            # recon_batch, mu, logvar = model(data)
+            # test_loss += loss_function(recon_batch, data, mu, logvar).item()
 
     test_loss /= len(test_loader.dataset)
     print('====> Test set loss: {:.4f}'.format(test_loss))
     return test_loss
-
+''' # not used for now
 # check vae dir exists, if not, create it
 vae_dir = join(args.logdir, 'vae')
 if not exists(vae_dir):
@@ -138,7 +139,7 @@ if not args.noreload and exists(reload_file):
     optimizer.load_state_dict(state['optimizer'])
     scheduler.load_state_dict(state['scheduler'])
     earlystopping.load_state_dict(state['earlystopping'])
-
+'''
 
 cur_best = None
 
@@ -149,29 +150,28 @@ for epoch in range(1, args.epochs + 1):
     earlystopping.step(test_loss)
 
     # checkpointing
-    best_filename = join(vae_dir, 'best.tar')
-    filename = join(vae_dir, 'checkpoint.tar')
+    # best_filename = join(vae_dir, 'best.tar')
+    # filename = join(vae_dir, 'checkpoint.tar')
     is_best = not cur_best or test_loss < cur_best
     if is_best:
         cur_best = test_loss
+    # save_checkpoint({
+    #     'epoch': epoch,
+    #     'state_dict': model.state_dict(),
+    #     'precision': test_loss,
+    #     'optimizer': optimizer.state_dict(),
+    #     'scheduler': scheduler.state_dict(),
+    #     'earlystopping': earlystopping.state_dict()
+    # }, is_best, filename, best_filename)
 
-    save_checkpoint({
-        'epoch': epoch,
-        'state_dict': model.state_dict(),
-        'precision': test_loss,
-        'optimizer': optimizer.state_dict(),
-        'scheduler': scheduler.state_dict(),
-        'earlystopping': earlystopping.state_dict()
-    }, is_best, filename, best_filename)
-
-
-
+    '''
     if not args.nosamples:
         with torch.no_grad():
             sample = torch.randn(RED_SIZE, LSIZE).to(device)
             sample = model.decoder(sample).cpu()
             save_image(sample.view(64, 3, RED_SIZE, RED_SIZE),
                        join(vae_dir, 'samples/sample_' + str(epoch) + '.png'))
+    '''
 
     if earlystopping.stop:
         print("End of Training because of early stopping at epoch {}".format(epoch))

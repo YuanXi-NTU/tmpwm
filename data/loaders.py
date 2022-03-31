@@ -6,7 +6,7 @@ from tqdm import tqdm
 import torch
 import torch.utils.data
 import numpy as np
-
+import pickle
 class _RolloutDataset(torch.utils.data.Dataset): # pylint: disable=too-few-public-methods
     def __init__(self, root, transform, buffer_size=200, train=True): # pylint: disable=too-many-arguments
         self._transform = transform
@@ -117,31 +117,46 @@ class RolloutSequenceDataset(_RolloutDataset): # pylint: disable=too-few-public-
 
     def _data_per_sequence(self, data_length):
         return data_length - self._seq_len
-
 class RolloutObservationDataset(_RolloutDataset): # pylint: disable=too-few-public-methods
-    """ Encapsulates rollouts.
-
-    Rollouts should be stored in subdirs of the root directory, in the form of npz files,
-    each containing a dictionary with the keys:
-        - observations: (rollout_len, *obs_shape)
-        - actions: (rollout_len, action_size)
-        - rewards: (rollout_len,)
-        - terminals: (rollout_len,), boolean
-
-     As the dataset is too big to be entirely stored in rams, only chunks of it
-     are stored, consisting of a constant number of files (determined by the
-     buffer_size parameter).  Once built, buffers must be loaded with the
-     load_next_buffer method.
-
-    Data are then provided in the form of images
+    """ trajectories with {obs,reward,action,next_obs,done}
 
     :args root: root directory of data sequences
     :args seq_len: number of timesteps extracted from each rollout
     :args transform: transformation of the observations
     :args train: if True, train data, else test
     """
-    def _data_per_sequence(self, data_length):
-        return data_length
+    def __init__(self, path=None, buffer_size=200, train=True):
+        self.buffer1=torch.rand(6000)
+        self.buffer2=torch.rand(6000)
+        self.buffer=pickle.load(open(path,'rb'))
+        self.buffer['obs']=self.buffer.view(-1,60)
+        self.buffer['next_obs']=self.buffer.view(-1,60)
+        self.buffer['action']=self.buffer.view(-1,8)
+        # self.buffer['reward']=self.buffer.view(-1)
+        #self.buffer['done']=self.buffer.view(-1)
 
-    def _get_data(self, data, seq_index):
-        return self._transform(data['observations'][seq_index])
+        split_pos = int(0.8 * self.buffer['obs'])
+        if train:
+            self.buffer['obs'] = self.buffer['obs'][:split_pos]
+            self.buffer['next_obs'] = self.buffer['next_obs'][:split_pos]
+            self.buffer['action'] = self.buffer['action'][:split_pos]
+        else:
+            self.buffer['obs'] = self.buffer['obs'][split_pos:]
+            self.buffer['next_obs'] = self.buffer['next_obs'][split_pos:]
+            self.buffer['action'] = self.buffer['action'][split_pos:]
+
+        self._cum_size = None
+        self._buffer = None
+        self._buffer_fnames = None
+        self._buffer_index = 0
+        self._buffer_size = buffer_size
+    def __getitem__(self, i):
+        return self.buffer['obs'][i],self.buffer['action'][i],self.buffer['next_obs'][i]
+    def __len__(self):
+        return self.buffer['action'].shape[0]
+    # def _data_per_sequence(self, data_length):
+    #     return data_length
+
+    # def _get_data(self, data, seq_index):
+    #     # return self._transform(data['observations'][seq_index])
+    #     return self._transform(data['observations'][seq_index])
