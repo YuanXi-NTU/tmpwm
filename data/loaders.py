@@ -129,13 +129,13 @@ class RolloutObservationDataset(_RolloutDataset): # pylint: disable=too-few-publ
         self.buffer1=torch.rand(6000)
         self.buffer2=torch.rand(6000)
         self.buffer=pickle.load(open(path,'rb'))
-        self.buffer['obs']=self.buffer.view(-1,60)
-        self.buffer['next_obs']=self.buffer.view(-1,60)
-        self.buffer['action']=self.buffer.view(-1,8)
+        self.buffer['obs']=self.buffer['obs'].view(-1,60)
+        self.buffer['next_obs']=self.buffer['next_obs'].view(-1,60)
+        self.buffer['action']=self.buffer['action'].view(-1,8)
         # self.buffer['reward']=self.buffer.view(-1)
         #self.buffer['done']=self.buffer.view(-1)
 
-        split_pos = int(0.8 * self.buffer['obs'])
+        split_pos = int(0.8 * self.buffer['obs'].shape[0])
         if train:
             self.buffer['obs'] = self.buffer['obs'][:split_pos]
             self.buffer['next_obs'] = self.buffer['next_obs'][:split_pos]

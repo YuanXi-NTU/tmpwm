@@ -2,17 +2,19 @@
 import argparse
 from os.path import join, exists
 from os import mkdir
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import torch
 import torch.utils.data
 from torch import optim
 from torch.nn import functional as F
-from torchvision import transforms
-from torchvision.utils import save_image
+#from torchvision import transforms
+#from torchvision.utils import save_image
 
 from models.vae import VAE
 
-from utils.misc import save_checkpoint
+#from utils.misc import save_checkpoint
 # from utils.misc import LSIZE, RED_SIZE
 ## WARNING : THIS SHOULD BE REPLACE WITH PYTORCH 0.5
 from utils.learning import EarlyStopping
@@ -23,7 +25,7 @@ from data.loaders import RolloutObservationDataset
 parser = argparse.ArgumentParser(description='VAE Trainer')
 parser.add_argument('--batch-size', type=int, default=4096, metavar='N',
                     help='input batch size for training (default: 32)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
+parser.add_argument('--epochs', type=int, default=40, metavar='N',
                     help='number of epochs to train (default: 1000)')
 parser.add_argument('--hidden-size', type=int, default=64, metavar='N',
                     help='number of epochs to train (default: 1000)')
@@ -43,33 +45,39 @@ torch.manual_seed(42)
 torch.backends.cudnn.benchmark = True
 
 device = torch.device("cuda" if cuda else "cpu")
-
-
-dataset_train = RolloutObservationDataset('datasets/carracing',
-                                          None, train=True)
-dataset_test = RolloutObservationDataset('datasets/carracing',
-                                         None, train=False)
-train_loader = torch.utils.data.DataLoader(
-    dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=2)
-test_loader = torch.utils.data.DataLoader(
-    dataset_test, batch_size=args.batch_size, shuffle=True, num_workers=2)
-
 model = VAE(68, 60,args.hidden_size).to(device)#input shape: 60+8(action+obs), output: 60(obs)
+
+path='/home/yuanxi20/isaacgym/IsaacGymEnvs/isaacgymenvs/buffer_data/res_buffer.pickle'
+dataset_train = RolloutObservationDataset(path,
+                                          None, train=True)
+dataset_test = RolloutObservationDataset(path,
+                                         None, train=False)
+
+# train_loader = torch.utils.data.DataLoader(
+#     dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=2)
+# test_loader = torch.utils.data.DataLoader(
+#     dataset_test, batch_size=args.batch_size, shuffle=True, num_workers=2)
+train_loader = torch.utils.data.DataLoader(
+    dataset_train, batch_size=16384, shuffle=True, num_workers=2)
+test_loader = torch.utils.data.DataLoader(
+    dataset_test, batch_size=16384, shuffle=True, num_workers=2)
+
+
+
 optimizer = optim.Adam(model.parameters(),lr=3e-5)
 scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
 earlystopping = EarlyStopping('min', patience=30)
-
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logsigma):
     """ VAE loss function """
-    BCE = F.mse_loss(recon_x, x, size_average=False)
+    BCE = F.mse_loss(recon_x, x)
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
     # https://arxiv.org/abs/1312.6114
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD = -0.5 * torch.sum(1 + 2 * logsigma - mu.pow(2) - (2 * logsigma).exp())
-    return BCE + KLD
+    return BCE + KLD,BCE,KLD
 
 
 def train(epoch):
@@ -79,22 +87,26 @@ def train(epoch):
     train_loss = 0
     for batch_idx, data in enumerate(train_loader):
 
-        data = data.to(device)
         obs,action,next_obs=data[0],data[1],data[2]
+        
         input=torch.cat([obs,action],dim=1)
+        input,next_obs=input.to(device),next_obs.to(device)
         optimizer.zero_grad()
-        recon_batch, mu, logvar = model(data)
-        loss = loss_function(recon_batch, next_obs, mu, logvar)
+        recon_batch, mu, logvar = model(input)
+        # print(mu,logvar)
+        loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
 
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
         if batch_idx % 20 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f},{:.6f},{:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader),
-                loss.item() / len(data)))
-
+                loss.item() / len(input),bce.item()/len(input),kld.item()/len(input)))
+            # if bce.item()/len(input) < 150:
+            #     import ipdb
+            #     ipdb.set_trace()
     print('====> Epoch: {} Average loss: {:.4f}'.format(
         epoch, train_loss / len(train_loader.dataset)))
 
@@ -106,20 +118,19 @@ def test():
     test_loss = 0
     with torch.no_grad():
         for data in test_loader:
-            data = data.to(device)
 
-            data = data.to(device)
             obs, action, next_obs = data[0], data[1], data[2]
             input = torch.cat([obs, action], dim=1)
+            input,next_obs=input.to(device),next_obs.to(device)
             optimizer.zero_grad()
-            recon_batch, mu, logvar = model(data)
-            loss = loss_function(recon_batch, next_obs, mu, logvar)
+            recon_batch, mu, logvar = model(input)
+            loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
             test_loss+=loss
             # recon_batch, mu, logvar = model(data)
             # test_loss += loss_function(recon_batch, data, mu, logvar).item()
 
     test_loss /= len(test_loader.dataset)
-    print('====> Test set loss: {:.4f}'.format(test_loss))
+    print('====> Test set loss: {:.4f},bce&kld: {:.4f},{:.4f}'.format(test_loss,bce,kld))
     return test_loss
 ''' # not used for now
 # check vae dir exists, if not, create it
