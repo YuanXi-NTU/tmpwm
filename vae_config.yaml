@@ -1,8 +1,6 @@
 # vae config
 model:
   hidden_size: 64
-
-
 seed: 42
 epoch: 100
 batch_size: 4096

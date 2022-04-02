@@ -1,6 +1,10 @@
+<<<<<<< HEAD
 """ Recurrent model training """
 import argparse,os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+=======
+import argparse,os
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5
 from functools import partial
 import easydict,yaml
 import torch
@@ -14,8 +18,20 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from data.loaders import RolloutSequenceDataset
 from models.vae import VAE
+<<<<<<< HEAD
 from models.mdrnn import MDRNN, gmm_loss#, RNNModel
 ASIZE, LSIZE, RSIZE=3,32,256
+=======
+from models.mdrnn import MDRNN, gmm_loss
+
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+ASIZE, LSIZE, RSIZE = 3, 32, 256
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+args=easydict.EasyDict(yaml.load(open('./rnn_config.yaml'),yaml.FullLoader))
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5
 '''
 parser = argparse.ArgumentParser("MDRNN training")
 parser.add_argument('--logdir', type=str,
@@ -24,6 +40,7 @@ parser.add_argument('--noreload', action='store_true',
                     help="Do not reload if specified.")
 parser.add_argument('--include_reward', action='store_true',
                     help="Add a reward modelisation term to the loss.")
+<<<<<<< HEAD
 args = parser.parse_args()
 '''
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -35,6 +52,17 @@ vae= VAE(args.obs_shape,args.obs_shape,args.model.vae_latent_size).to(device)
 vae_path='./vae.pth'
 vae.load_state_dict(torch.load(vae_path)['vae'])
 mdrnn = MDRNN(args.model.latent_size, args.action_shape, RSIZE, 5)#RSIZ
+=======
+# args = parser.parse_args()
+args.update(vars(parser.parse_args()))
+'''
+
+# set model
+vae= VAE(args.obs_shape,args.obs_shape,args.model.vae_latent_size).to(device)
+vae_path='./vae.pth'
+vae.load_state_dict(torch.load(vae_path)['vae'])
+mdrnn = MDRNN(args.model.latent_size, args.action_shape, RSIZE, 5)#RSIZE: rnn size
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5
 mdrnn.to(device)
 
 optimizer = torch.optim.RMSprop(mdrnn.parameters(), lr=args.lr, alpha=.9)
@@ -110,7 +138,11 @@ def get_loss(latent_obs, action, reward, done,
     return dict(gmm=gmm, bce=bce, mse=mse, loss=loss)
 
 
+<<<<<<< HEAD
 def data_pass(epoch, train): # pylint: disable=too-many-locals
+=======
+def data_pass(epoch, train):
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5
     """ One pass through the data """
     if train:
         mdrnn.train()
@@ -171,7 +203,11 @@ for e in range(args.epoch):
     is_best = not cur_best or test_loss < cur_best
     if is_best:
         cur_best = test_loss
+<<<<<<< HEAD
         torch.save({'mdrnn':mdrnn.state_dict()},'mdrnn22.pth')
+=======
+        torch.save({'mdrnn':mdrnn.state_dict()},'mdrnn.pth')
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5
     '''
     checkpoint_fname = join(rnn_dir, 'checkpoint.tar')
     save_checkpoint({
@@ -182,7 +218,15 @@ for e in range(args.epoch):
         "precision": test_loss,
         "epoch": e}, is_best, checkpoint_fname,
                     rnn_file)
+<<<<<<< HEAD
 '''
     # if earlystopping.stop:
     #     print("End of Training because of early stopping at epoch {}".format(e))
     #     break
+=======
+    if earlystopping.stop:
+        print("End of Training because of early stopping at epoch {}".format(e))
+        break                    
+'''
+
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5

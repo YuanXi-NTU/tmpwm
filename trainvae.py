@@ -13,6 +13,10 @@ from data.loaders import RolloutObservationDataset
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
+
+
+args=easydict.EasyDict(yaml.load(open('./vae_config.yaml'),yaml.FullLoader))
+
 '''
 import argparse
 parser = argparse.ArgumentParser(description='VAE Trainer')
@@ -23,10 +27,10 @@ parser.add_argument('--epochs', type=int, default=40, metavar='N',
 parser.add_argument('--hidden-size', type=int, default=64, metavar='N',
                     help='number of epochs to train (default: 1000)')
 parser.add_argument('--logdir', type=str, help='Directory where results are logged')
-args = parser.parse_args()
+args.update(vars(parser.parse_args()))
 '''
 
-args=easydict.EasyDict(yaml.load(open('./vae_config.yaml'),yaml.FullLoader))
+
 cuda = torch.cuda.is_available()
 
 torch.manual_seed(args.seed)
@@ -74,8 +78,13 @@ def train(epoch):
         
         # input=torch.cat([obs,action],dim=1)
         # input,next_obs=input.to(device),next_obs.to(device)
+<<<<<<< HEAD
         # obs,next_obs=obs.to(device),next_obs.to(device)
         obs=obs.to(device)
+=======
+        obs,next_obs=obs.to(device),next_obs.to(device)
+
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(obs)
         # loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
@@ -85,9 +94,8 @@ def train(epoch):
         train_loss += loss.item()
         optimizer.step()
         if batch_idx % 20 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f},{:.6f},{:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader),
+            print('Train Epoch: {} [{:.0f}%]\tLoss: {:.6f},bce: {:.6f},kld: {:.6f}'.format(
+                epoch,100. * batch_idx / len(train_loader),
                 loss.item() / len(obs),bce.item()/len(obs),kld.item()/len(obs)))
     print('====> Epoch: {} Average loss: {:.4f}'.format(
         epoch, train_loss / len(train_loader.dataset)))
@@ -100,9 +108,11 @@ def test():
         for data in test_loader:
 
             obs, action, next_obs = data[0], data[1], data[2]
+
             # input = torch.cat([obs, action], dim=1)
             # input,next_obs=input.to(device),next_obs.to(device)
             obs,next_obs=obs.to(device),next_obs.to(device)
+
             optimizer.zero_grad()
             recon_batch, mu, logvar = model(obs)
             loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
@@ -142,8 +152,9 @@ for epoch in range(1, args.epoch + 1):
             sample = model.decoder(sample).cpu()
             save_image(sample.view(64, 3, RED_SIZE, RED_SIZE),
                        join(vae_dir, 'samples/sample_' + str(epoch) + '.png'))
-    '''
 
     if earlystopping.stop:
         print("End of Training because of early stopping at epoch {}".format(epoch))
         break
+    '''
+

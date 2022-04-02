@@ -39,8 +39,12 @@ class RolloutSequenceDataset(Dataset): # pylint: disable=too-few-public-methods
     """
     def __init__(self, path, seq_len,  train=True): # pylint: disable=too-many-arguments
         self.buffer=pickle.load(open(path,'rb'))
+<<<<<<< HEAD
         self.buffer={key:self.buffer[key].transpose(0,1).contiguous() for key in list(self.buffer.keys())}#1000,4096,_->4096,1000,_
         split_idx=int(0.8*self.buffer['obs'].shape[0])
+=======
+        self.buffer={key:self.buffer[key].transpose(0,1) for key in list(self.buffer.keys())}#timesteps,num_envs,__->num_envs,timesteps,__
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5
         if train:
             self.buffer={key:self.buffer[key][:split_idx] for key in list(self.buffer.keys())}
         else:
@@ -48,7 +52,11 @@ class RolloutSequenceDataset(Dataset): # pylint: disable=too-few-public-methods
 
         self.seq_len = seq_len
         self.train=train
+<<<<<<< HEAD
         self.seq_num=self.buffer['obs'].shape[1]-self.seq_len+1 #seqs in 1 trajecotry
+=======
+    '''
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5
     def _get_data(self, data, seq_index):
         obs_data = data['observations'][seq_index:seq_index + self._seq_len + 1]
         obs_data = self._transform(obs_data.astype(np.float32))
@@ -61,7 +69,7 @@ class RolloutSequenceDataset(Dataset): # pylint: disable=too-few-public-methods
         # data is given in the form
         # (obs, action, reward, terminal, next_obs)
         return obs, action, reward, terminal, next_obs
-
+    '''
     def __len__(self):
         return self.seq_num*self.buffer['obs'].shape[0]
     def __getitem__(self, i):
@@ -84,7 +92,7 @@ class RolloutObservationDataset(Dataset): # pylint: disable=too-few-public-metho
         self.buffer['obs']=self.buffer['obs'].view(-1,60)
         self.buffer['next_obs']=self.buffer['next_obs'].view(-1,60)
         self.buffer['action']=self.buffer['action'].view(-1,8)
-        # self.buffer['reward']=self.buffer.view(-1)
+        # self.buffer['reward']=self.buffer.view(-1) #not used when train VAE
         #self.buffer['done']=self.buffer.view(-1)
 
         split_pos = int(0.8 * self.buffer['obs'].shape[0])

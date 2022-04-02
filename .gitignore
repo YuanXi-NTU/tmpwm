@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 used/
 .idea/
 runs/
 nn/
 *.pth
+=======
+./.idea/
+used/
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5
 datasets
 logs
 __pycache__

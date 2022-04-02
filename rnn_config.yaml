@@ -8,7 +8,12 @@ model:
 #  rnn_seq_len: 1000
 seed: 42
 epoch: 100
+<<<<<<< HEAD
 batch_size: 1024
 lr: 0.001
+=======
+batch_size: 4096
+lr: 0.0003
+>>>>>>> 07c96e602b11beb10d1557eaa97a0afafc5457e5
 action_shape: 8
 obs_shape: 60
