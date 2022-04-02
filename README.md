@@ -13,3 +13,10 @@ original files(basically won't used):
 	utils/*
 	
 	envs/*
+
+usage: 
+
+* collect data(data_collect)
+* trainvae.py
+* trainmdrnn.py
+* train policy with simulate env
