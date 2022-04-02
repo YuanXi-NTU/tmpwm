@@ -1,4 +1,7 @@
-.used/
+used/
+.idea/
+runs/
+nn/
 *.pth
 datasets
 logs
