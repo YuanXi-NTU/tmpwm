@@ -2,16 +2,13 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ca31a1ad-abf4-4128-86ea-df3c1f83b240" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/rnn_config.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tmp.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/vae_config.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/data/loaders.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/loaders.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/mdrnn.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/mdrnn.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/vae.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/vae.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rnn_config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/rnn_config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tmp.py" beforeDir="false" afterPath="$PROJECT_DIR$/tmp.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trainmdrnn.py" beforeDir="false" afterPath="$PROJECT_DIR$/trainmdrnn.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trainvae.py" beforeDir="false" afterPath="$PROJECT_DIR$/trainvae.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/misc.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/misc.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -24,8 +21,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/utils/misc.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="218">
-              <caret line="14" column="38" selection-start-line="14" selection-start-column="38" selection-end-line="14" selection-end-column="38" />
+            <state relative-caret-position="250">
+              <caret line="30" column="43" selection-start-line="30" selection-start-column="43" selection-end-line="30" selection-end-column="43" />
               <folding>
                 <element signature="e#36#47#0" expanded="true" />
               </folding>
@@ -33,37 +30,13 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/trainvae.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="610">
-              <caret line="123" selection-start-line="123" selection-end-line="123" />
+            <state relative-caret-position="258">
+              <caret line="40" selection-start-line="40" selection-end-line="40" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
-                <element signature="e#427#1046#1" />
-                <element signature="e#2662#2883#1" />
-                <element signature="e#4464#5105#1" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/vae_config.yaml">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="44">
-              <caret line="2" column="17" lean-forward="true" selection-start-line="2" selection-start-column="17" selection-end-line="2" selection-end-column="17" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/data/loaders.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="258">
-              <caret line="91" column="33" lean-forward="true" selection-start-line="91" selection-start-column="33" selection-end-line="91" selection-end-column="33" />
-              <folding>
-                <element signature="e#36#61#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -72,14 +45,41 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/models/mdrnn.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="390">
-              <caret line="106" column="3" selection-start-line="106" selection-start-column="3" selection-end-line="106" selection-end-column="3" />
+            <state relative-caret-position="-242">
+              <caret line="12" column="11" selection-start-line="12" selection-start-column="11" selection-end-line="12" selection-end-column="11" />
               <folding>
                 <element signature="e#86#98#0" expanded="true" />
-                <element signature="e#2166#3894#0" />
-                <element signature="e#3929#5639#0" />
-                <element signature="e#4245#4914#1" />
-                <element signature="e#5673#8068#0" />
+                <element signature="e#3673#3678#0" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/data/loaders.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="390">
+              <caret line="46" selection-start-line="46" selection-end-line="46" />
+              <folding>
+                <element signature="e#36#61#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/trainmdrnn.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="880">
+              <caret line="77" column="32" lean-forward="true" selection-start-line="77" selection-start-column="32" selection-end-line="77" selection-end-column="32" />
+              <folding>
+                <element signature="e#33#48#0" expanded="true" />
+                <element signature="e#500#951#1" />
+                <element signature="e#1071#1551#1" />
+                <element signature="e#1801#2238#1" />
+                <element signature="e#3802#4550#1" />
+                <element signature="e#4962#5117#1" />
+                <element signature="e#7396#7634#0" />
               </folding>
             </state>
           </provider>
@@ -88,8 +88,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tmp.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="154">
-              <caret line="11" column="37" lean-forward="true" selection-start-line="11" selection-start-column="37" selection-end-line="11" selection-end-column="37" />
+            <state relative-caret-position="198">
+              <caret line="9" selection-start-line="9" selection-end-line="9" />
               <folding>
                 <element signature="e#0#20#0" expanded="true" />
               </folding>
@@ -98,31 +98,10 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/trainmdrnn.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="352">
-              <caret line="131" column="26" lean-forward="true" selection-start-line="131" selection-start-column="26" selection-end-line="131" selection-end-column="26" />
-              <folding>
-                <element signature="e#33#48#0" expanded="true" />
-                <element signature="e#500#951#1" />
-                <element signature="e#1071#1551#1" />
-                <element signature="e#1801#2238#1" />
-                <element signature="e#2240#2254#0" />
-                <element signature="e#2714#3692#0" />
-                <element signature="e#3802#4550#1" />
-                <element signature="e#4962#5117#1" />
-                <element signature="e#5311#6929#0" />
-                <element signature="e#7396#7634#0" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/rnn_config.yaml">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="132">
-              <caret line="6" column="21" selection-start-line="6" selection-start-column="2" selection-end-line="6" selection-end-column="21" />
+            <state relative-caret-position="154">
+              <caret line="7" column="19" selection-start-line="7" selection-start-column="19" selection-end-line="7" selection-end-column="19" />
             </state>
           </provider>
         </entry>
@@ -168,6 +147,10 @@
       <find>cfg.action_embed_size</find>
       <find>cfg.rnn_size</find>
       <find>cfg.num_mixtures</find>
+      <find>68</find>
+      <find>stat</find>
+      <find>path</find>
+      <find>include</find>
     </findStrings>
     <replaceStrings>
       <replace>vae_latent_size</replace>
@@ -188,21 +171,21 @@
         <option value="$PROJECT_DIR$/anymal_terrain.py" />
         <option value="$PROJECT_DIR$/anymal.py" />
         <option value="$PROJECT_DIR$/config.yaml" />
-        <option value="$PROJECT_DIR$/models/vae.py" />
-        <option value="$PROJECT_DIR$/data/loaders.py" />
         <option value="$PROJECT_DIR$/vae_config.yaml" />
         <option value="$PROJECT_DIR$/utils/misc.py" />
-        <option value="$PROJECT_DIR$/trainmdrnn.py" />
+        <option value="$PROJECT_DIR$/models/vae.py" />
+        <option value="$PROJECT_DIR$/trainvae.py" />
         <option value="$PROJECT_DIR$/rnn_config.yaml" />
         <option value="$PROJECT_DIR$/models/mdrnn.py" />
+        <option value="$PROJECT_DIR$/data/loaders.py" />
         <option value="$PROJECT_DIR$/tmp.py" />
-        <option value="$PROJECT_DIR$/trainvae.py" />
+        <option value="$PROJECT_DIR$/trainmdrnn.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="1400" />
-    <option name="y" value="2" />
+    <option name="x" value="1170" />
+    <option name="y" value="82" />
     <option name="width" value="2535" />
     <option name="height" value="2075" />
   </component>
@@ -218,6 +201,11 @@
             <path>
               <item name="world-models" type="b2602c69:ProjectViewProjectNode" />
               <item name="world-models" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="world-models" type="b2602c69:ProjectViewProjectNode" />
+              <item name="world-models" type="462c0819:PsiDirectoryNode" />
+              <item name="data" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="world-models" type="b2602c69:ProjectViewProjectNode" />
@@ -297,17 +285,18 @@
       <workItem from="1648455822121" duration="12414000" />
       <workItem from="1648519389839" duration="6693000" />
       <workItem from="1648705865801" duration="7012000" />
-      <workItem from="1648787693933" duration="12203000" />
+      <workItem from="1648787693933" duration="21073000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="38322000" />
+    <option name="totallyTimeSpent" value="47192000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-6" y="-6" width="1549" height="837" extended-state="6" />
+    <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.5884017" visible="true" weight="0.12659076" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" sideWeight="0.5884017" visible="true" weight="0.12659076" />
       <window_info id="Structure" order="1" sideWeight="0.4115983" side_tool="true" weight="0.19758874" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Docker" order="0" show_stripe_button="false" />
@@ -326,7 +315,7 @@
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="2" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="3" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="4" weight="0.25" />
-      <window_info active="true" anchor="right" id="Python Console" order="5" visible="true" weight="0.46081716" />
+      <window_info anchor="right" id="Python Console" order="5" weight="0.6503684" />
       <window_info anchor="right" id="Run" order="6" weight="0.32953784" />
     </layout>
     <layout-to-restore>
@@ -425,6 +414,20 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/vae_config.yaml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="242">
+          <caret line="11" lean-forward="true" selection-start-line="11" selection-end-line="11" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/models/vae.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="198">
+          <caret line="11" column="18" selection-start-line="11" selection-start-column="18" selection-end-line="11" selection-end-column="18" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/traincontroller.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="2755">
@@ -436,29 +439,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/models/vae.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <folding>
-            <element signature="e#199#966#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/data/loaders.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="258">
-          <caret line="91" column="33" lean-forward="true" selection-start-line="91" selection-start-column="33" selection-end-line="91" selection-end-column="33" />
-          <folding>
-            <element signature="e#36#61#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/utils/misc.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="218">
-          <caret line="14" column="38" selection-start-line="14" selection-start-column="38" selection-end-line="14" selection-end-column="38" />
+        <state relative-caret-position="250">
+          <caret line="30" column="43" selection-start-line="30" selection-start-column="43" selection-end-line="30" selection-end-column="43" />
           <folding>
             <element signature="e#36#47#0" expanded="true" />
           </folding>
@@ -467,70 +451,71 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/rnn_config.yaml">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="132">
-          <caret line="6" column="21" selection-start-line="6" selection-start-column="2" selection-end-line="6" selection-end-column="21" />
+        <state relative-caret-position="154">
+          <caret line="7" column="19" selection-start-line="7" selection-start-column="19" selection-end-line="7" selection-end-column="19" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/trainmdrnn.py">
+    <entry file="file://D:/software/anaconda/Lib/site-packages/torch/distributions/normal.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="352">
-          <caret line="131" column="26" lean-forward="true" selection-start-line="131" selection-start-column="26" selection-end-line="131" selection-end-column="26" />
+        <state relative-caret-position="270">
+          <caret line="70" column="8" selection-start-line="70" selection-start-column="8" selection-end-line="70" selection-end-column="8" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/trainvae.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="258">
+          <caret line="40" selection-start-line="40" selection-end-line="40" />
           <folding>
-            <element signature="e#33#48#0" expanded="true" />
-            <element signature="e#500#951#1" />
-            <element signature="e#1071#1551#1" />
-            <element signature="e#1801#2238#1" />
-            <element signature="e#2240#2254#0" />
-            <element signature="e#2714#3692#0" />
-            <element signature="e#3802#4550#1" />
-            <element signature="e#4962#5117#1" />
-            <element signature="e#5311#6929#0" />
-            <element signature="e#7396#7634#0" />
+            <element signature="e#0#9#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/models/mdrnn.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="390">
-          <caret line="106" column="3" selection-start-line="106" selection-start-column="3" selection-end-line="106" selection-end-column="3" />
+        <state relative-caret-position="-242">
+          <caret line="12" column="11" selection-start-line="12" selection-start-column="11" selection-end-line="12" selection-end-column="11" />
           <folding>
             <element signature="e#86#98#0" expanded="true" />
-            <element signature="e#2166#3894#0" />
-            <element signature="e#3929#5639#0" />
-            <element signature="e#4245#4914#1" />
-            <element signature="e#5673#8068#0" />
+            <element signature="e#3673#3678#0" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tmp.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="154">
-          <caret line="11" column="37" lean-forward="true" selection-start-line="11" selection-start-column="37" selection-end-line="11" selection-end-column="37" />
+        <state relative-caret-position="198">
+          <caret line="9" selection-start-line="9" selection-end-line="9" />
           <folding>
             <element signature="e#0#20#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/vae_config.yaml">
+    <entry file="file://$PROJECT_DIR$/data/loaders.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="44">
-          <caret line="2" column="17" lean-forward="true" selection-start-line="2" selection-start-column="17" selection-end-line="2" selection-end-column="17" />
+        <state relative-caret-position="390">
+          <caret line="46" selection-start-line="46" selection-end-line="46" />
+          <folding>
+            <element signature="e#36#61#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/trainvae.py">
+    <entry file="file://$PROJECT_DIR$/trainmdrnn.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="610">
-          <caret line="123" selection-start-line="123" selection-end-line="123" />
+        <state relative-caret-position="880">
+          <caret line="77" column="32" lean-forward="true" selection-start-line="77" selection-start-column="32" selection-end-line="77" selection-end-column="32" />
           <folding>
-            <element signature="e#0#9#0" expanded="true" />
-            <element signature="e#427#1046#1" />
-            <element signature="e#2662#2883#1" />
-            <element signature="e#4464#5105#1" />
+            <element signature="e#33#48#0" expanded="true" />
+            <element signature="e#500#951#1" />
+            <element signature="e#1071#1551#1" />
+            <element signature="e#1801#2238#1" />
+            <element signature="e#3802#4550#1" />
+            <element signature="e#4962#5117#1" />
+            <element signature="e#7396#7634#0" />
           </folding>
         </state>
       </provider>

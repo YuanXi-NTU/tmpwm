@@ -1,7 +1,7 @@
 """ Recurrent model training """
 import argparse
 from functools import partial
-
+import easydict,yaml
 import torch
 import torch.nn.functional as f
 from torch.utils.data import DataLoader
@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from data.loaders import RolloutSequenceDataset
 from models.vae import VAE
-from models.mdrnn import MDRNN, gmm_loss, RNNModel
+from models.mdrnn import MDRNN, gmm_loss#, RNNModel
 
 '''
 parser = argparse.ArgumentParser("MDRNN training")
@@ -29,7 +29,7 @@ args = parser.parse_args()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # constants
-BSIZE = 16
+BSIZE = 16#batchsize
 SEQ_LEN = 32
 epochs = 30
 '''
@@ -51,6 +51,11 @@ rnn_file = join(rnn_dir, 'best.tar')
 if not exists(rnn_dir):
     mkdir(rnn_dir)
 '''
+
+args=easydict.EasyDict(yaml.load(open('./rnn_config.yaml'),yaml.FullLoader))
+vae= VAE(args.vae_latent_size).cuda()
+vae_path='./vae.pth'
+vae.load_state_dict(torch.load(vae_path)['vae'])
 mdrnn = MDRNN(LSIZE, ASIZE, RSIZE, 5)
 mdrnn.to(device)
 optimizer = torch.optim.RMSprop(mdrnn.parameters(), lr=1e-3, alpha=.9)
@@ -72,12 +77,12 @@ if exists(rnn_file) and not args.noreload:
 # Data Loading
 # transform = transforms.Lambda(
 #     lambda x: np.transpose(x, (0, 3, 1, 2)) / 255)
-# train_loader = DataLoader(
-#     RolloutSequenceDataset('datasets/carracing', SEQ_LEN, transform, buffer_size=30),
-#     batch_size=BSIZE, num_workers=8, shuffle=True)
-# test_loader = DataLoader(
-#     RolloutSequenceDataset('datasets/carracing', SEQ_LEN, transform, train=False, buffer_size=10),
-#     batch_size=BSIZE, num_workers=8)
+train_loader = DataLoader(
+    RolloutSequenceDataset('datasets/carracing', SEQ_LEN, train=True),
+    batch_size=BSIZE, num_workers=4, shuffle=True)
+test_loader = DataLoader(
+    RolloutSequenceDataset('datasets/carracing', SEQ_LEN, train=False),
+    batch_size=BSIZE, num_workers=4)
 
 def to_latent(obs, next_obs):
     """ Transform observations to latent space.
@@ -90,10 +95,10 @@ def to_latent(obs, next_obs):
         - next_latent_obs: 4D torch tensor (BSIZE, SEQ_LEN, LSIZE)
     """
     with torch.no_grad():
-        obs, next_obs = [
-            f.upsample(x.view(-1, 3, SIZE, SIZE), size=RED_SIZE,
-                       mode='bilinear', align_corners=True)
-            for x in (obs, next_obs)]
+        # obs, next_obs = [
+        #     f.upsample(x.view(-1, 3, SIZE, SIZE), size=RED_SIZE,
+        #                mode='bilinear', align_corners=True)
+        #     for x in (obs, next_obs)]
 
         (obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma) = [
             vae(x)[1:] for x in (obs, next_obs)]
@@ -105,7 +110,7 @@ def to_latent(obs, next_obs):
     return latent_obs, latent_next_obs
 
 def get_loss(latent_obs, action, reward, done,
-             latent_next_obs, include_reward: bool):
+             latent_next_obs,):
     """ Compute losses.
 
     The loss that is computed is:
@@ -152,7 +157,6 @@ def data_pass(epoch, train, include_reward): # pylint: disable=too-many-locals
         mdrnn.eval()
         loader = test_loader
 
-    loader.dataset.load_next_buffer()
 
     cum_loss = 0
     cum_gmm = 0
@@ -161,14 +165,14 @@ def data_pass(epoch, train, include_reward): # pylint: disable=too-many-locals
 
     pbar = tqdm(total=len(loader.dataset), desc="Epoch {}".format(epoch))
     for i, data in enumerate(loader):
-        obs, action, reward, terminal, next_obs = [arr.to(device) for arr in data]
+        obs, action, reward, done, next_obs = [arr.to(device) for arr in data]
 
         # transform obs
         latent_obs, latent_next_obs = to_latent(obs, next_obs)
 
         if train:
             losses = get_loss(latent_obs, action, reward,
-                              terminal, latent_next_obs, include_reward)
+                              done, latent_next_obs, include_reward)
 
             optimizer.zero_grad()
             losses['loss'].backward()
@@ -176,7 +180,7 @@ def data_pass(epoch, train, include_reward): # pylint: disable=too-many-locals
         else:
             with torch.no_grad():
                 losses = get_loss(latent_obs, action, reward,
-                                  terminal, latent_next_obs, include_reward)
+                                  done, latent_next_obs, include_reward)
 
         cum_loss += losses['loss'].item()
         cum_gmm += losses['gmm'].item()
@@ -193,8 +197,8 @@ def data_pass(epoch, train, include_reward): # pylint: disable=too-many-locals
     return cum_loss * BSIZE / len(loader.dataset)
 
 
-train = partial(data_pass, train=True, include_reward=args.include_reward)
-test = partial(data_pass, train=False, include_reward=args.include_reward)
+train = partial(data_pass, train=True)
+test = partial(data_pass, train=False)
 
 cur_best = None
 for e in range(epochs):
@@ -206,6 +210,7 @@ for e in range(epochs):
     is_best = not cur_best or test_loss < cur_best
     if is_best:
         cur_best = test_loss
+    '''
     checkpoint_fname = join(rnn_dir, 'checkpoint.tar')
     save_checkpoint({
         "state_dict": mdrnn.state_dict(),
@@ -215,7 +220,7 @@ for e in range(epochs):
         "precision": test_loss,
         "epoch": e}, is_best, checkpoint_fname,
                     rnn_file)
-
+'''
     if earlystopping.stop:
         print("End of Training because of early stopping at epoch {}".format(e))
         break

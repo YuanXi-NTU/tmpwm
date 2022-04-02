@@ -98,10 +98,11 @@ def test():
         for data in test_loader:
 
             obs, action, next_obs = data[0], data[1], data[2]
-            input = torch.cat([obs, action], dim=1)
-            input,next_obs=input.to(device),next_obs.to(device)
+            # input = torch.cat([obs, action], dim=1)
+            # input,next_obs=input.to(device),next_obs.to(device)
+            obs,next_obs=obs.to(device),next_obs.to(device)
             optimizer.zero_grad()
-            recon_batch, mu, logvar = model(input)
+            recon_batch, mu, logvar = model(obs)
             loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
             test_loss+=loss.item()
 
@@ -121,7 +122,7 @@ for epoch in range(1, args.epoch + 1):
     is_best = not cur_best or test_loss < cur_best
     if is_best:
         cur_best = test_loss
-        torch.save({'vae':model.stat_dict()},'vae.pth')
+        torch.save({'vae':model.state_dict()},'vae.pth')
 
     '''
     # save_checkpoint({

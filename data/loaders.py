@@ -4,50 +4,11 @@ from os import listdir
 from os.path import join, isdir
 from tqdm import tqdm
 import torch
-import torch.utils.data
 import numpy as np
 import pickle
-class _RolloutDataset(torch.utils.data.Dataset): # pylint: disable=too-few-public-methods
-    def __init__(self, root, transform, buffer_size=200, train=True): # pylint: disable=too-many-arguments
-        self._transform = transform
+from torch.utils.data.dataset import  Dataset
 
-        self._files = [
-            join(root, sd, ssd)
-            for sd in listdir(root) if isdir(join(root, sd))
-            for ssd in listdir(join(root, sd))]
-
-        if train:
-            self._files = self._files[:-600]
-        else:
-            self._files = self._files[-600:]
-
-        self._cum_size = None
-        self._buffer = None
-        self._buffer_fnames = None
-        self._buffer_index = 0
-        self._buffer_size = buffer_size
-
-
-    def __len__(self):
-        # to have a full sequence, you need self.seq_len + 1 elements, as
-        # you must produce both an seq_len obs and seq_len next_obs sequences
-        return self._cum_size[-1]
-
-    def __getitem__(self, i):
-        # binary search through cum_size
-        file_index = bisect(self._cum_size, i) - 1
-        seq_index = i - self._cum_size[file_index]
-        data = self._buffer[file_index]
-        return self._get_data(data, seq_index)
-
-    def _get_data(self, data, seq_index):
-        pass
-
-    def _data_per_sequence(self, data_length):
-        pass
-
-
-class RolloutSequenceDataset(_RolloutDataset): # pylint: disable=too-few-public-methods
+class RolloutSequenceDataset(Dataset): # pylint: disable=too-few-public-methods
     """ Encapsulates rollouts.
 
     Rollouts should be stored in subdirs of the root directory, in the form of npz files,
@@ -76,10 +37,15 @@ class RolloutSequenceDataset(_RolloutDataset): # pylint: disable=too-few-public-
     :args transform: transformation of the observations
     :args train: if True, train data, else test
     """
-    def __init__(self, root, seq_len, transform, buffer_size=200, train=True): # pylint: disable=too-many-arguments
-        super().__init__(root, transform, buffer_size, train)
-        self._seq_len = seq_len
-
+    def __init__(self, path, seq_len,  train=True): # pylint: disable=too-many-arguments
+        self.buffer=pickle.load(open(path,'rb'))
+        self.buffer={key:self.buffer[key].transpose(0,1) for key in list(self.buffer.keys())}#1000,4096,_->4096,1000,_
+        if train:
+            self.buffer={key:self.buffer[key][:int(0.8*self.buffer[key].shape[0])] for key in list(self.buffer.keys())}
+        else:
+            self.buffer={key:self.buffer[key][int(0.8*self.buffer[key].shape[0]):] for key in list(self.buffer.keys())}
+        self.seq_len = seq_len
+        self.train=train
     def _get_data(self, data, seq_index):
         obs_data = data['observations'][seq_index:seq_index + self._seq_len + 1]
         obs_data = self._transform(obs_data.astype(np.float32))
@@ -93,9 +59,18 @@ class RolloutSequenceDataset(_RolloutDataset): # pylint: disable=too-few-public-
         # (obs, action, reward, terminal, next_obs)
         return obs, action, reward, terminal, next_obs
 
-    def _data_per_sequence(self, data_length):
-        return data_length - self._seq_len
-class RolloutObservationDataset(_RolloutDataset): # pylint: disable=too-few-public-methods
+    def __len__(self):
+        return (self.buffer['obs'].shape[1]-self.seq_len+1)*self.seq_len
+    def __getitem__(self, i):
+        idx1,idx2=i//self.buffer['obs'].shape[1],i%self.buffer['obs'].shape[1]
+        return self.buffer['obs'][idx1,idx2:idx2+self.seq_len,:],\
+                self.buffer['action'][idx1,idx2:idx2+self.seq_len,:],\
+                self.buffer['reward'][idx1,idx2:idx2+self.seq_len],\
+                self.buffer['done'][idx1,idx2:idx2+self.seq_len],\
+                self.buffer['next_obs'][idx1,idx2:idx2+self.seq_len,:]
+
+
+class RolloutObservationDataset(Dataset): # pylint: disable=too-few-public-methods
     """ trajectories with {obs,reward,action,next_obs,done}
 
     :args path: path directory of data sequences

@@ -5,6 +5,7 @@ model:
   vae_latent_size: 64
   num_mixtures: 5
   rnn_rew_loss_weight: 9
+  rnn_seq_len: 1000
 seed: 42
 epoch: 100
 batch_size: 4096

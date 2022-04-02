@@ -45,24 +45,18 @@ def gmm_loss(batch, mus, sigmas, logpi, reduce=True): # pylint: disable=too-many
         return - torch.mean(log_prob)
     return - log_prob
 
-class _MDRNNBase(nn.Module):
+
+# '''
+class MDRNN(nn.Module):
+    """ MDRNN model for multi steps forward """
     def __init__(self, latents, actions, hiddens, gaussians):
-        super().__init__()
         self.latents = latents
         self.actions = actions
         self.hiddens = hiddens
         self.gaussians = gaussians
 
         self.gmm_linear = nn.Linear(
-            hiddens, (2 * latents + 1) * gaussians + 2)
-
-    def forward(self, *inputs):
-        pass
-'''
-class MDRNN(_MDRNNBase):
-    """ MDRNN model for multi steps forward """
-    def __init__(self, latents, actions, hiddens, gaussians):
-        super().__init__(latents, actions, hiddens, gaussians)
+            hiddens, (3 * latents + 1) * gaussians + 2)
         self.rnn = nn.LSTM(latents + actions, hiddens)
 
     def forward(self, actions, latents): # pylint: disable=arguments-differ
@@ -104,110 +98,111 @@ class MDRNN(_MDRNNBase):
         ds = gmm_outs[:, :, -1]
 
         return mus, sigmas, logpi, rs, ds
-'''
-class MDRNNCell(_MDRNNBase):
-    """ MDRNN model for one step forward """
-    def __init__(self, latents, actions, hiddens, gaussians):
-        super().__init__(latents, actions, hiddens, gaussians)
-        self.rnn = nn.LSTMCell(latents + actions, hiddens)
-
-    def forward(self, action, latent, hidden): # pylint: disable=arguments-differ
-        """ ONE STEP forward.
-
-        :args actions: (BSIZE, ASIZE) torch tensor
-        :args latents: (BSIZE, LSIZE) torch tensor
-        :args hidden: (BSIZE, RSIZE) torch tensor
-
-        :returns: mu_nlat, sig_nlat, pi_nlat, r, d, next_hidden, parameters of
-        the GMM prediction for the next latent, gaussian prediction of the
-        reward, logit prediction of terminality and next hidden state.
-            - mu_nlat: (BSIZE, N_GAUSS, LSIZE) torch tensor
-            - sigma_nlat: (BSIZE, N_GAUSS, LSIZE) torch tensor
-            - logpi_nlat: (BSIZE, N_GAUSS) torch tensor
-            - rs: (BSIZE) torch tensor
-            - ds: (BSIZE) torch tensor
-        """
-        in_al = torch.cat([action, latent], dim=1)
-
-        next_hidden = self.rnn(in_al, hidden)
-        out_rnn = next_hidden[0]
-
-        out_full = self.gmm_linear(out_rnn)
-
-        stride = self.gaussians * self.latents
-
-        mus = out_full[:, :stride]
-        mus = mus.view(-1, self.gaussians, self.latents)
-
-        sigmas = out_full[:, stride:2 * stride]
-        sigmas = sigmas.view(-1, self.gaussians, self.latents)
-        sigmas = torch.exp(sigmas)
-
-        pi = out_full[:, 2 * stride:2 * stride + self.gaussians]
-        pi = pi.view(-1, self.gaussians)
-        logpi = f.log_softmax(pi, dim=-1)
-
-        r = out_full[:, -2]
-
-        d = out_full[:, -1]
-
-        return mus, sigmas, logpi, r, d, next_hidden
-
-
-
-class MDRNN(nn.Module):
-    def __init__(self,vae_latent_size,action_shape,rnn_size,num_mixtures):
-        super(RNNModel, self).__init__()
-        self.rnn_size=rnn_size
-        self.num_mixtures=num_mixtures
-        # action_embeded + z_size -> rnn_size
-        self.rnn = nn.LSTMCell(vae_latent_size+ action_shape, rnn_size)
-        # z_size * (mix, mu, logvar) * num_mixtures +  done
-        self.output = nn.Linear(rnn_size, vae_latent_size* 3 * num_mixtures+ 1)
-
-    def reset(self):
-        self.hx, self.cx = torch.zeros(1, self.rnn_size), torch.zeros(1, self.rnn_size)
-
-    def forward(self, z, actions, dones):
-        # z: (batch, seq, feat)
-        # actions: (batch, seq, 1) -> (batch, seq, embed_n)
-        # dones: (batch, seq) <- {0, 1}
-        actions = self.action_embed(actions.long())
-        dones = dones.float()
-        inp = torch.cat((z, actions), dim=2)
-        outputs = []
-        hx = torch.zeros(z.size(0), self.rnn_size).cuda()
-        cx = torch.zeros(z.size(0), self.rnn_size).cuda()
-        seq_length = inp.size(1)
-        for step in range(0, seq_length):
-            hx, cx = self.rnn(inp[:, step, :], (hx, cx))
-            outputs.append(hx.unsqueeze(1))
-            hx = hx * (1.0 - dones[:, step].unsqueeze(1))
-            cx = cx * (1.0 - dones[:, step].unsqueeze(1))
-
-        output = torch.cat(outputs, dim=1)
-        # (batch_size, seq_length, 961)
-        output = self.output(output[:, :-1, :])
-
-        logmix, mu, logstd, done_p = torch.split(output, self.num_mixtures*
-                                                 self.vae_latent_size, 2)
-
-        logmix = logmix.contiguous().view(-1, self.num_mixtures)
-        mu = mu.contiguous().view(-1, self.num_mixtures)
-        logstd = logstd.contiguous().view(-1, self.num_mixtures)
-
-        return logmix, mu, logstd, done_p.squeeze()
-
-    def step(self, z, action):
-        #used in train controller
-        inp = torch.cat((z, action), dim=2)
-        self.hx, self.cx = self.rnn(inp[:, 0, :], (self.hx, self.cx))
-        output = self.output(self.hx)
-        logmix, mu, logstd, done_p = torch.split(output, self.num_mixtures*
-                                                 self.vae_latent_size, 1)
-
-        logmix = logmix.contiguous().view(-1, self.num_mixtures)
-        mu = mu.contiguous().view(-1, self.num_mixtures)
-        logstd = logstd.contiguous().view(-1, self.num_mixtures)
-
-        return logmix, mu, logstd, done_p.squeeze()
+# '''
+# class MDRNNCell(_MDRNNBase):
+#     """ MDRNN model for one step forward """
+#     def __init__(self, latents, actions, hiddens, gaussians):
+#         super().__init__(latents, actions, hiddens, gaussians)
+#         self.rnn = nn.LSTMCell(latents + actions, hiddens)
+#
+#     def forward(self, action, latent, hidden): # pylint: disable=arguments-differ
+#         """ ONE STEP forward.
+#
+#         :args actions: (BSIZE, ASIZE) torch tensor
+#         :args latents: (BSIZE, LSIZE) torch tensor
+#         :args hidden: (BSIZE, RSIZE) torch tensor
+#
+#         :returns: mu_nlat, sig_nlat, pi_nlat, r, d, next_hidden, parameters of
+#         the GMM prediction for the next latent, gaussian prediction of the
+#         reward, logit prediction of terminality and next hidden state.
+#             - mu_nlat: (BSIZE, N_GAUSS, LSIZE) torch tensor
+#             - sigma_nlat: (BSIZE, N_GAUSS, LSIZE) torch tensor
+#             - logpi_nlat: (BSIZE, N_GAUSS) torch tensor
+#             - rs: (BSIZE) torch tensor
+#             - ds: (BSIZE) torch tensor
+#         """
+#         in_al = torch.cat([action, latent], dim=1)
+#
+#         next_hidden = self.rnn(in_al, hidden)
+#         out_rnn = next_hidden[0]
+#
+#         out_full = self.gmm_linear(out_rnn)
+#
+#         stride = self.gaussians * self.latents
+#
+#         mus = out_full[:, :stride]
+#         mus = mus.view(-1, self.gaussians, self.latents)
+#
+#         sigmas = out_full[:, stride:2 * stride]
+#         sigmas = sigmas.view(-1, self.gaussians, self.latents)
+#         sigmas = torch.exp(sigmas)
+#
+#         pi = out_full[:, 2 * stride:2 * stride + self.gaussians]
+#         pi = pi.view(-1, self.gaussians)
+#         logpi = f.log_softmax(pi, dim=-1)
+#
+#         r = out_full[:, -2]
+#
+#         d = out_full[:, -1]
+#
+#         return mus, sigmas, logpi, r, d, next_hidden
+#
+#
+#
+# class MDRNN(nn.Module):
+#     def __init__(self,vae_latent_size,action_shape,rnn_size,num_mixtures):
+#         super(RNNModel, self).__init__()
+#         self.rnn_size=rnn_size
+#         self.num_mixtures=num_mixtures
+#         # action_embeded + z_size -> rnn_size
+#         self.rnn = nn.LSTMCell(vae_latent_size+ action_shape, rnn_size)
+#         # z_size * (mix, mu, logvar) * num_mixtures +  done
+#         self.output = nn.Linear(rnn_size, vae_latent_size* 3 * num_mixtures+ 1)
+#
+#     def reset(self):
+#         self.hx, self.cx = torch.zeros(1, self.rnn_size), torch.zeros(1, self.rnn_size)
+#
+#     def forward(self, z, actions, dones):
+#         # z: (batch, seq, feat)
+#         # actions: (batch, seq, 1) -> (batch, seq, embed_n)
+#         # dones: (batch, seq) <- {0, 1}
+#         actions = self.action_embed(actions.long())
+#         dones = dones.float()
+#         inp = torch.cat((z, actions), dim=2)
+#         outputs = []
+#         hx = torch.zeros(z.size(0), self.rnn_size).cuda()
+#         cx = torch.zeros(z.size(0), self.rnn_size).cuda()
+#         seq_length = inp.size(1)
+#         for step in range(0, seq_length):
+#             hx, cx = self.rnn(inp[:, step, :], (hx, cx))
+#             outputs.append(hx.unsqueeze(1))
+#             hx = hx * (1.0 - dones[:, step].unsqueeze(1))
+#             cx = cx * (1.0 - dones[:, step].unsqueeze(1))
+#
+#         output = torch.cat(outputs, dim=1)
+#         # (batch_size, seq_length, 961)
+#         output = self.output(output[:, :-1, :])
+#
+#         logmix, mu, logstd, done_p = torch.split(output, self.num_mixtures*
+#                                                  self.vae_latent_size, 2)
+#
+#         logmix = logmix.contiguous().view(-1, self.num_mixtures)
+#         mu = mu.contiguous().view(-1, self.num_mixtures)
+#         logstd = logstd.contiguous().view(-1, self.num_mixtures)
+#
+#         return logmix, mu, logstd, done_p.squeeze()
+#
+#     def step(self, z, action):
+#         #used in train controller
+#         inp = torch.cat((z, action), dim=2)
+#         self.hx, self.cx = self.rnn(inp[:, 0, :], (self.hx, self.cx))
+#         output = self.output(self.hx)
+#         logmix, mu, logstd, done_p = torch.split(output, self.num_mixtures*
+#                                                  self.vae_latent_size, 1)
+#
+#         logmix = logmix.contiguous().view(-1, self.num_mixtures)
+#         mu = mu.contiguous().view(-1, self.num_mixtures)
+#         logstd = logstd.contiguous().view(-1, self.num_mixtures)
+#
+#         return logmix, mu, logstd, done_p.squeeze()
+# '''
