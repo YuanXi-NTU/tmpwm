@@ -83,9 +83,8 @@ def train(epoch):
         train_loss += loss.item()
         optimizer.step()
         if batch_idx % 20 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f},{:.6f},{:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader),
+            print('Train Epoch: {} [{:.0f}%]\tLoss: {:.6f},bce: {:.6f},kld: {:.6f}'.format(
+                epoch,100. * batch_idx / len(train_loader),
                 loss.item() / len(obs),bce.item()/len(obs),kld.item()/len(obs)))
     print('====> Epoch: {} Average loss: {:.4f}'.format(
         epoch, train_loss / len(train_loader.dataset)))

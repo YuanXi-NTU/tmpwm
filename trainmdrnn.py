@@ -7,9 +7,9 @@ import torch.nn.functional as f
 from torch.utils.data import DataLoader
 
 from tqdm import tqdm
-from utils.misc import save_checkpoint
-from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
-from utils.learning import EarlyStopping
+# from utils.misc import save_checkpoint
+# from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
+# from utils.learning import EarlyStopping
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from data.loaders import RolloutSequenceDataset
@@ -28,6 +28,7 @@ args = parser.parse_args()
 '''
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+ASIZE, LSIZE, RSIZE=3,32,256
 # constants
 BSIZE = 16#batchsize
 SEQ_LEN = 32
@@ -60,7 +61,7 @@ mdrnn = MDRNN(LSIZE, ASIZE, RSIZE, 5)
 mdrnn.to(device)
 optimizer = torch.optim.RMSprop(mdrnn.parameters(), lr=1e-3, alpha=.9)
 scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
-earlystopping = EarlyStopping('min', patience=30)
+# earlystopping = EarlyStopping('min', patience=30)
 
 '''
 if exists(rnn_file) and not args.noreload:
@@ -205,7 +206,7 @@ for e in range(epochs):
     train(e)
     test_loss = test(e)
     scheduler.step(test_loss)
-    earlystopping.step(test_loss)
+    # earlystopping.step(test_loss)
 
     is_best = not cur_best or test_loss < cur_best
     if is_best:
@@ -221,6 +222,6 @@ for e in range(epochs):
         "epoch": e}, is_best, checkpoint_fname,
                     rnn_file)
 '''
-    if earlystopping.stop:
-        print("End of Training because of early stopping at epoch {}".format(e))
-        break
+    # if earlystopping.stop:
+    #     print("End of Training because of early stopping at epoch {}".format(e))
+    #     break
