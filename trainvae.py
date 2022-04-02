@@ -133,7 +133,9 @@ for epoch in range(1, args.epoch + 1):
         cur_best = test_loss
         torch.save({'vae':model.state_dict()},'vae.pth')
 
-    '''
+    '''#used by previous author
+    
+    
     # save_checkpoint({
     #     'epoch': epoch,
     #     'state_dict': model.state_dict(),

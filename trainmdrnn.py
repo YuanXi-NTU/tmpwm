@@ -1,4 +1,6 @@
 """ Recurrent model training """
+#LSIZE:  size of latent varialbe z
+
 import argparse,os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 from functools import partial
@@ -14,12 +16,10 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from data.loaders import RolloutSequenceDataset
 from models.vae import VAE
-ASIZE, LSIZE, RSIZE=3,32,256
 from models.mdrnn import MDRNN, gmm_loss
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-ASIZE, LSIZE, RSIZE = 3, 32, 256
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -43,7 +43,7 @@ args=easydict.EasyDict(yaml.load(open('./rnn_config.yaml'),yaml.FullLoader))
 vae= VAE(args.obs_shape,args.obs_shape,args.model.vae_latent_size).to(device)
 vae_path='./vae.pth'
 vae.load_state_dict(torch.load(vae_path)['vae'])
-mdrnn = MDRNN(args.model.latent_size, args.action_shape, RSIZE, 5)#RSIZE: rnn size
+mdrnn = MDRNN(args.model.latent_size, args.action_shape, args.model.rnn_size, args.model.num_mixtures)
 mdrnn.to(device)
 
 optimizer = torch.optim.RMSprop(mdrnn.parameters(), lr=args.lr, alpha=.9)
@@ -62,12 +62,12 @@ test_loader = DataLoader(
 def to_latent(obs, next_obs):
     """ Transform observations to latent space.
 
-    :args obs: 5D torch tensor (args.batch_size, SEQ_LEN, ASIZE, SIZE, SIZE)
-    :args next_obs: 5D torch tensor (args.batch_size, SEQ_LEN, ASIZE, SIZE, SIZE)
+    :args obs: 5D torch tensor (args.batch_size, seq_len, action_shape, SIZE, SIZE)
+    :args next_obs: 5D torch tensor (args.batch_size, seq_len, action_shape, SIZE, SIZE)
 
     :returns: (latent_obs, latent_next_obs)
-        - latent_obs: 4D torch tensor (args.batch_size, SEQ_LEN, LSIZE)
-        - next_latent_obs: 4D torch tensor (args.batch_size, SEQ_LEN, LSIZE)
+        - latent_obs: 4D torch tensor (args.batch_size, seq_len, LSIZE)
+        - next_latent_obs: 4D torch tensor (args.batch_size, seq_len, LSIZE)
     """
     with torch.no_grad():
         (obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma) = [
@@ -91,10 +91,10 @@ def get_loss(latent_obs, action, reward, done,
     approximately linearily with LSIZE. All losses are averaged both on the
     batch and the sequence dimensions (the two first dimensions).
 
-    :args latent_obs: (args.batch_size, SEQ_LEN, LSIZE) torch tensor
-    :args action: (args.batch_size, SEQ_LEN, ASIZE) torch tensor
-    :args reward: (args.batch_size, SEQ_LEN) torch tensor
-    :args latent_next_obs: (args.batch_size, SEQ_LEN, LSIZE) torch tensor
+    :args latent_obs: (args.batch_size, seq_len, LSIZE) torch tensor
+    :args action: (args.batch_size, seq_len, action_shape) torch tensor
+    :args reward: (args.batch_size, seq_len) torch tensor
+    :args latent_next_obs: (args.batch_size, seq_len, LSIZE) torch tensor
 
     :returns: dictionary of losses, containing the gmm, the mse, the bce and
         the averaged loss.
@@ -106,7 +106,7 @@ def get_loss(latent_obs, action, reward, done,
     gmm = gmm_loss(latent_next_obs, mus, sigmas, logpi)
     bce = f.binary_cross_entropy_with_logits(done_pred, done)
     mse = f.mse_loss(rew_pred, reward)
-    scale = LSIZE + 2
+    scale = args.model.vae_latent_size + 2
     '''
     if include_reward:
         mse = f.mse_loss(rew_pred, reward)
@@ -161,7 +161,7 @@ def data_pass(epoch, train):
         pbar.set_postfix_str("loss={loss:10.6f} bce={bce:10.6f} "
                              "gmm={gmm:10.6f} mse={mse:10.6f}".format(
                                  loss=cum_loss / (i + 1), bce=cum_bce / (i + 1),
-                                 gmm=cum_gmm / LSIZE / (i + 1), mse=cum_mse / (i + 1)))
+                                 gmm=cum_gmm / args.model.vae_latent_size / (i + 1), mse=cum_mse / (i + 1)))
         pbar.update(args.batch_size)
     pbar.close()
     return cum_loss * args.batch_size / len(loader.dataset)

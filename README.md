@@ -11,3 +11,5 @@ original files(basically won't used):
 	tests/*
 
 	utils/*
+	
+	envs/*

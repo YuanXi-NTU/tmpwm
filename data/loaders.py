@@ -51,6 +51,7 @@ class RolloutSequenceDataset(Dataset): # pylint: disable=too-few-public-methods
         self.train=train
         self.seq_num=self.buffer['obs'].shape[1]-self.seq_len+1 #seqs in 1 trajecotry
     '''
+    #used by previous author 
     def _get_data(self, data, seq_index):
         obs_data = data['observations'][seq_index:seq_index + self._seq_len + 1]
         obs_data = self._transform(obs_data.astype(np.float32))
