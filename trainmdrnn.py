@@ -1,25 +1,22 @@
 """ Recurrent model training """
 import argparse
 from functools import partial
-from os.path import join, exists
-from os import mkdir
+
 import torch
 import torch.nn.functional as f
 from torch.utils.data import DataLoader
-# from torchvision import transforms
-import numpy as np
+
 from tqdm import tqdm
 from utils.misc import save_checkpoint
 from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
 from utils.learning import EarlyStopping
-## WARNING : THIS SHOULD BE REPLACED WITH PYTORCH 0.5
-# from utils.learning import ReduceLROnPlateau
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from data.loaders import RolloutSequenceDataset
 from models.vae import VAE
-from models.mdrnn import MDRNN, gmm_loss
+from models.mdrnn import MDRNN, gmm_loss, RNNModel
 
+'''
 parser = argparse.ArgumentParser("MDRNN training")
 parser.add_argument('--logdir', type=str,
                     help="Where things are logged and models are loaded from.")
@@ -28,14 +25,14 @@ parser.add_argument('--noreload', action='store_true',
 parser.add_argument('--include_reward', action='store_true',
                     help="Add a reward modelisation term to the loss.")
 args = parser.parse_args()
-
+'''
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # constants
 BSIZE = 16
 SEQ_LEN = 32
 epochs = 30
-
+'''
 # Loading VAE
 vae_file = join(args.logdir, 'vae', 'best.tar')
 assert exists(vae_file), "No trained VAE in the logdir..."
@@ -53,14 +50,14 @@ rnn_file = join(rnn_dir, 'best.tar')
 
 if not exists(rnn_dir):
     mkdir(rnn_dir)
-
+'''
 mdrnn = MDRNN(LSIZE, ASIZE, RSIZE, 5)
 mdrnn.to(device)
 optimizer = torch.optim.RMSprop(mdrnn.parameters(), lr=1e-3, alpha=.9)
 scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
 earlystopping = EarlyStopping('min', patience=30)
 
-
+'''
 if exists(rnn_file) and not args.noreload:
     rnn_state = torch.load(rnn_file)
     print("Loading MDRNN at epoch {} "
@@ -70,7 +67,7 @@ if exists(rnn_file) and not args.noreload:
     optimizer.load_state_dict(rnn_state["optimizer"])
     scheduler.load_state_dict(state['scheduler'])
     earlystopping.load_state_dict(state['earlystopping'])
-
+'''
 
 # Data Loading
 # transform = transforms.Lambda(
@@ -107,7 +104,7 @@ def to_latent(obs, next_obs):
             [(obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma)]]
     return latent_obs, latent_next_obs
 
-def get_loss(latent_obs, action, reward, terminal,
+def get_loss(latent_obs, action, reward, done,
              latent_next_obs, include_reward: bool):
     """ Compute losses.
 
@@ -126,21 +123,22 @@ def get_loss(latent_obs, action, reward, terminal,
     :returns: dictionary of losses, containing the gmm, the mse, the bce and
         the averaged loss.
     """
-    latent_obs, action,\
-        reward, terminal,\
-        latent_next_obs = [arr.transpose(1, 0)
-                           for arr in [latent_obs, action,
-                                       reward, terminal,
-                                       latent_next_obs]]
-    mus, sigmas, logpi, rs, ds = mdrnn(action, latent_obs)
+    latent_obs, action, reward, done, latent_next_obs = \
+        [arr.transpose(1, 0) for arr in
+         [latent_obs, action, reward, done, latent_next_obs]]
+    mus, sigmas, logpi, rew_pred, done_pred = mdrnn(action, latent_obs)
     gmm = gmm_loss(latent_next_obs, mus, sigmas, logpi)
-    bce = f.binary_cross_entropy_with_logits(ds, terminal)
+    bce = f.binary_cross_entropy_with_logits(done_pred, done)
+    mse = f.mse_loss(rew_pred, reward)
+    scale = LSIZE + 2
+    '''
     if include_reward:
-        mse = f.mse_loss(rs, reward)
+        mse = f.mse_loss(rew_pred, reward)
         scale = LSIZE + 2
     else:
         mse = 0
         scale = LSIZE + 1
+    '''
     loss = (gmm + bce + mse) / scale
     return dict(gmm=gmm, bce=bce, mse=mse, loss=loss)
 

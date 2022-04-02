@@ -1,8 +1,3 @@
-
-"""
-Variational encoder model, used as a visual model
-for our model of the world.
-"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -28,7 +23,7 @@ def initialize_parameters(params, mode):
             elif "bias" in name:
                 param.data.fill_(0)
     else:
-        raise ValueError(f"Unsupported initialization: {weight_init}")
+        raise ValueError(f"Unsupported initialization")
 
 class StateEncoder(nn.Module):
     def __init__(self, input_size, latent_size):
@@ -41,8 +36,7 @@ class StateEncoder(nn.Module):
         self.fc_mu = nn.Linear(self.latent_size, self.latent_size)
         self.fc_logsigma  = nn.Linear(self.latent_size, self.latent_size)
 
-    def forward(self, x): # pylint: disable=arguments-differ
-
+    def forward(self, x):
         x=F.relu(self.fc1(x))
         x=F.relu(self.fc2(x))
         x=F.relu(self.fc3(x))
@@ -52,7 +46,6 @@ class StateEncoder(nn.Module):
         return mu, logsigma
 
 class StateDecoder(nn.Module):
-    """ VAE decoder """
     def __init__(self, output_size, latent_size):
         super(StateDecoder, self).__init__()
         self.output_size= output_size
@@ -71,17 +64,14 @@ class StateDecoder(nn.Module):
 
 
 class VAE(nn.Module):
-    """ Variational Autoencoder """
     def __init__(self, input_size, output_size,latent_size):
         super(VAE, self).__init__()
         self.encoder = StateEncoder(input_size, latent_size)
         self.decoder = StateDecoder(output_size, latent_size)
         initialize_parameters(self.named_parameters(), 'orthogonal')
-        self.bn=nn.BatchNorm1d(input_size)
 
 
-    def forward(self, x): # pylint: disable=arguments-differ
-        x=self.bn(x)
+    def forward(self, x):
         mu, logsigma = self.encoder(x)
         sigma = logsigma.exp()
         eps = torch.randn_like(sigma)

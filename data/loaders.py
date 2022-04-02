@@ -27,32 +27,10 @@ class _RolloutDataset(torch.utils.data.Dataset): # pylint: disable=too-few-publi
         self._buffer_index = 0
         self._buffer_size = buffer_size
 
-    def load_next_buffer(self):
-        """ Loads next buffer """
-        self._buffer_fnames = self._files[self._buffer_index:self._buffer_index + self._buffer_size]
-        self._buffer_index += self._buffer_size
-        self._buffer_index = self._buffer_index % len(self._files)
-        self._buffer = []
-        self._cum_size = [0]
-
-        # progress bar
-        pbar = tqdm(total=len(self._buffer_fnames),
-                    bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} {postfix}')
-        pbar.set_description("Loading file buffer ...")
-
-        for f in self._buffer_fnames:
-            with np.load(f) as data:
-                self._buffer += [{k: np.copy(v) for k, v in data.items()}]
-                self._cum_size += [self._cum_size[-1] +
-                                   self._data_per_sequence(data['rewards'].shape[0])]
-            pbar.update(1)
-        pbar.close()
 
     def __len__(self):
         # to have a full sequence, you need self.seq_len + 1 elements, as
         # you must produce both an seq_len obs and seq_len next_obs sequences
-        if not self._cum_size:
-            self.load_next_buffer()
         return self._cum_size[-1]
 
     def __getitem__(self, i):
@@ -120,14 +98,10 @@ class RolloutSequenceDataset(_RolloutDataset): # pylint: disable=too-few-public-
 class RolloutObservationDataset(_RolloutDataset): # pylint: disable=too-few-public-methods
     """ trajectories with {obs,reward,action,next_obs,done}
 
-    :args root: root directory of data sequences
-    :args seq_len: number of timesteps extracted from each rollout
-    :args transform: transformation of the observations
+    :args path: path directory of data sequences
     :args train: if True, train data, else test
     """
-    def __init__(self, path=None, buffer_size=200, train=True):
-        self.buffer1=torch.rand(6000)
-        self.buffer2=torch.rand(6000)
+    def __init__(self, path=None, train=True):
         self.buffer=pickle.load(open(path,'rb'))
         self.buffer['obs']=self.buffer['obs'].view(-1,60)
         self.buffer['next_obs']=self.buffer['next_obs'].view(-1,60)
@@ -145,18 +119,7 @@ class RolloutObservationDataset(_RolloutDataset): # pylint: disable=too-few-publ
             self.buffer['next_obs'] = self.buffer['next_obs'][split_pos:]
             self.buffer['action'] = self.buffer['action'][split_pos:]
 
-        self._cum_size = None
-        self._buffer = None
-        self._buffer_fnames = None
-        self._buffer_index = 0
-        self._buffer_size = buffer_size
     def __getitem__(self, i):
         return self.buffer['obs'][i],self.buffer['action'][i],self.buffer['next_obs'][i]
     def __len__(self):
         return self.buffer['action'].shape[0]
-    # def _data_per_sequence(self, data_length):
-    #     return data_length
-
-    # def _get_data(self, data, seq_index):
-    #     # return self._transform(data['observations'][seq_index])
-    #     return self._transform(data['observations'][seq_index])

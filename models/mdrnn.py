@@ -58,7 +58,7 @@ class _MDRNNBase(nn.Module):
 
     def forward(self, *inputs):
         pass
-
+'''
 class MDRNN(_MDRNNBase):
     """ MDRNN model for multi steps forward """
     def __init__(self, latents, actions, hiddens, gaussians):
@@ -104,7 +104,7 @@ class MDRNN(_MDRNNBase):
         ds = gmm_outs[:, :, -1]
 
         return mus, sigmas, logpi, rs, ds
-
+'''
 class MDRNNCell(_MDRNNBase):
     """ MDRNN model for one step forward """
     def __init__(self, latents, actions, hiddens, gaussians):
@@ -152,3 +152,62 @@ class MDRNNCell(_MDRNNBase):
         d = out_full[:, -1]
 
         return mus, sigmas, logpi, r, d, next_hidden
+
+
+
+class MDRNN(nn.Module):
+    def __init__(self,vae_latent_size,action_shape,rnn_size,num_mixtures):
+        super(RNNModel, self).__init__()
+        self.rnn_size=rnn_size
+        self.num_mixtures=num_mixtures
+        # action_embeded + z_size -> rnn_size
+        self.rnn = nn.LSTMCell(vae_latent_size+ action_shape, rnn_size)
+        # z_size * (mix, mu, logvar) * num_mixtures +  done
+        self.output = nn.Linear(rnn_size, vae_latent_size* 3 * num_mixtures+ 1)
+
+    def reset(self):
+        self.hx, self.cx = torch.zeros(1, self.rnn_size), torch.zeros(1, self.rnn_size)
+
+    def forward(self, z, actions, dones):
+        # z: (batch, seq, feat)
+        # actions: (batch, seq, 1) -> (batch, seq, embed_n)
+        # dones: (batch, seq) <- {0, 1}
+        actions = self.action_embed(actions.long())
+        dones = dones.float()
+        inp = torch.cat((z, actions), dim=2)
+        outputs = []
+        hx = torch.zeros(z.size(0), self.rnn_size).cuda()
+        cx = torch.zeros(z.size(0), self.rnn_size).cuda()
+        seq_length = inp.size(1)
+        for step in range(0, seq_length):
+            hx, cx = self.rnn(inp[:, step, :], (hx, cx))
+            outputs.append(hx.unsqueeze(1))
+            hx = hx * (1.0 - dones[:, step].unsqueeze(1))
+            cx = cx * (1.0 - dones[:, step].unsqueeze(1))
+
+        output = torch.cat(outputs, dim=1)
+        # (batch_size, seq_length, 961)
+        output = self.output(output[:, :-1, :])
+
+        logmix, mu, logstd, done_p = torch.split(output, self.num_mixtures*
+                                                 self.vae_latent_size, 2)
+
+        logmix = logmix.contiguous().view(-1, self.num_mixtures)
+        mu = mu.contiguous().view(-1, self.num_mixtures)
+        logstd = logstd.contiguous().view(-1, self.num_mixtures)
+
+        return logmix, mu, logstd, done_p.squeeze()
+
+    def step(self, z, action):
+        #used in train controller
+        inp = torch.cat((z, action), dim=2)
+        self.hx, self.cx = self.rnn(inp[:, 0, :], (self.hx, self.cx))
+        output = self.output(self.hx)
+        logmix, mu, logstd, done_p = torch.split(output, self.num_mixtures*
+                                                 self.vae_latent_size, 1)
+
+        logmix = logmix.contiguous().view(-1, self.num_mixtures)
+        mu = mu.contiguous().view(-1, self.num_mixtures)
+        logstd = logstd.contiguous().view(-1, self.num_mixtures)
+
+        return logmix, mu, logstd, done_p.squeeze()
