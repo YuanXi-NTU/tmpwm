@@ -1,4 +1,4 @@
-# vae config
+# rnn config
 model:
   latent_size: 64
   seq_len: 16
@@ -9,6 +9,6 @@ model:
 seed: 42
 epoch: 100
 batch_size: 4096
-lr: 3e-5
+lr: 0.0003
 action_shape: 8
 obs_shape: 60
