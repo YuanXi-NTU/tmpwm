@@ -38,8 +38,8 @@ model = VAE(args.obs_shape, args.obs_shape,
             args.model.hidden_size).to(device)
 
 path='/home/yuanxi20/isaacgym/IsaacGymEnvs/isaacgymenvs/buffer_data/res_buffer.pickle'
-dataset_train = RolloutObservationDataset(path,None, train=True)
-dataset_test = RolloutObservationDataset(path,None, train=False)
+dataset_train = RolloutObservationDataset(path, train=True)
+dataset_test = RolloutObservationDataset(path, train=False)
 
 
 train_loader = torch.utils.data.DataLoader(
@@ -120,7 +120,7 @@ for epoch in range(1, args.epochs + 1):
     is_best = not cur_best or test_loss < cur_best
     if is_best:
         cur_best = test_loss
-        torch.save({'vae':model.stat_dict(),'vae.pth'})
+        torch.save({'vae':model.stat_dict()},'vae.pth')
 
     '''
     # save_checkpoint({
