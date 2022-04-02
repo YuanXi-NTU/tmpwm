@@ -72,10 +72,11 @@ def train(epoch):
 
         obs,action,next_obs=data[0],data[1],data[2]
         
-        input=torch.cat([obs,action],dim=1)
-        input,next_obs=input.to(device),next_obs.to(device)
+        # input=torch.cat([obs,action],dim=1)
+        # input,next_obs=input.to(device),next_obs.to(device)
+        obs,next_obs=obs.to(device),next_obs.to(device)
         optimizer.zero_grad()
-        recon_batch, mu, logvar = model(input)
+        recon_batch, mu, logvar = model(obs)
         loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
 
         loss.backward()
@@ -85,7 +86,7 @@ def train(epoch):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f},{:.6f},{:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader),
-                loss.item() / len(input),bce.item()/len(input),kld.item()/len(input)))
+                loss.item() / len(obs),bce.item()/len(obs),kld.item()/len(obs)))
     print('====> Epoch: {} Average loss: {:.4f}'.format(
         epoch, train_loss / len(train_loader.dataset)))
 
@@ -111,7 +112,7 @@ def test():
 
 cur_best = None
 
-for epoch in range(1, args.epochs + 1):
+for epoch in range(1, args.epoch + 1):
     train(epoch)
     test_loss = test()
     scheduler.step(test_loss)
