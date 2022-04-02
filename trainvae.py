@@ -74,10 +74,12 @@ def train(epoch):
         
         # input=torch.cat([obs,action],dim=1)
         # input,next_obs=input.to(device),next_obs.to(device)
-        obs,next_obs=obs.to(device),next_obs.to(device)
+        # obs,next_obs=obs.to(device),next_obs.to(device)
+        obs=obs.to(device)
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(obs)
-        loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
+        # loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
+        loss,bce,kld = loss_function(recon_batch, obs, mu, logvar)
 
         loss.backward()
         train_loss += loss.item()
