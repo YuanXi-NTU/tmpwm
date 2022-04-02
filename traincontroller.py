@@ -13,6 +13,8 @@ from time import sleep
 from torch.multiprocessing import Process, Queue
 import torch
 import cma
+import easydict
+import yaml
 from models import Controller
 from tqdm import tqdm
 import numpy as np
@@ -21,6 +23,8 @@ from utils.misc import load_parameters
 from utils.misc import flatten_parameters
 
 # parsing
+args=easydict.EasyDict(yaml.load(open('./controller_config.yaml'),yaml.FullLoader))
+'''
 parser = argparse.ArgumentParser()
 parser.add_argument('--logdir', type=str, help='Where everything is stored.')
 parser.add_argument('--n-samples', type=int, help='Number of samples used to obtain '
@@ -33,6 +37,8 @@ parser.add_argument('--display', action='store_true', help="Use progress bars if
 parser.add_argument('--max-workers', type=int, help='Maximum number of workers.',
                     default=32)
 args = parser.parse_args()
+args.update(vars(parser.parse_args()))
+'''
 
 # Max number of workers. M
 
