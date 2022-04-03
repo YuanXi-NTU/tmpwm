@@ -10,8 +10,10 @@ from isaacgym.gymtorch import *
 
 from isaacgymenvs.utils.torch_jit_utils import *
 from .base.vec_task import VecTask
-
-
+import easydict,yaml
+from models.vae import VAE
+from models.mdrnn import MDRNNCell
+from torch.distributions.categorical import Categorical
 class Test(VecTask):
 
     def __init__(self, cfg, sim_device, graphics_device_id, headless):
@@ -21,50 +23,31 @@ class Test(VecTask):
 
         self.max_episode_length = self.cfg["env"]["episodeLength"]
 
-        self.randomization_params = self.cfg["task"]["randomization_params"]
-        self.randomize = self.cfg["task"]["randomize"]
+        # self.randomization_params = self.cfg["task"]["randomization_params"]
+        # self.randomize = self.cfg["task"]["randomize"]
 
-        '''
-        self.dof_vel_scale = self.cfg["env"]["dofVelocityScale"]
-        self.contact_force_scale = self.cfg["env"]["contactForceScale"]
-        self.power_scale = self.cfg["env"]["powerScale"]
-        self.heading_weight = self.cfg["env"]["headingWeight"]
-        self.up_weight = self.cfg["env"]["upWeight"]
-        self.actions_cost_scale = self.cfg["env"]["actionsCost"]
-        self.energy_cost_scale = self.cfg["env"]["energyCost"]
-        self.joints_at_limit_cost_scale = self.cfg["env"]["jointsAtLimitCost"]
-        self.death_cost = self.cfg["env"]["deathCost"]
-        self.termination_height = self.cfg["env"]["terminationHeight"]
 
-        self.debug_viz = self.cfg["env"]["enableDebugVis"]
-        self.plane_static_friction = self.cfg["env"]["plane"]["staticFriction"]
-        self.plane_dynamic_friction = self.cfg["env"]["plane"]["dynamicFriction"]
-        self.plane_restitution = self.cfg["env"]["plane"]["restitution"]
-        '''
         self.cfg["env"]["numObservations"] = 60
         self.cfg["env"]["numActions"] = 8
 
         super().__init__(config=self.cfg, sim_device=sim_device, graphics_device_id=graphics_device_id,
                          headless=headless)
 
-        # get gym GPU state tensors
-        # actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
-        # dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
-        # sensor_tensor = self.gym.acquire_force_sensor_tensor(self.sim)
-        # sensors_per_env = 4
 
-    def create_sim(self):
-        return
-
-    def _create_ground_plane(self):
-        return
-
-
-    def _create_envs(self, num_envs, spacing, num_per_row):
-        return
-
+        self.args = easydict.EasyDict(yaml.load(open('./env_config.yaml'), yaml.FullLoader))
+        self.vae = VAE(self.args.obs_shape, self.args.obs_shape, self.args.vae_latent_size)
+        self.mdrnn = MDRNNCell(self.args.model.latent_size,
+                               self.args.action_shape, self.args.model.rnn_size,
+                               self.args.model.num_mixtures)
+        vae_path = '/home/yuanxi20/tmpwm/vae.pth'
+        mdrnn_path = '/home/yuanxi20/tmpwm/mdrnn.pth'
+        self.vae.load_state_dict(torch.load(vae_path)['vae'])
+        self.mdrnn.load_state_dict(torch.load(mdrnn_path)['mdrnn'])
+        self.vae.eval()
+        self.mdrnn.eval()
 
     def reset_idx(self, env_ids):
+
         # Randomization can happen only at reset time, since it can reset actor positions on GPU
         # if self.randomize:
         #     self.apply_randomizations(self.randomization_params)
@@ -93,9 +76,13 @@ class Test(VecTask):
         # self.prev_potentials[env_ids] = -torch.norm(to_target, p=2, dim=-1) / self.dt
         # self.potentials[env_ids] = self.prev_potentials[env_ids].clone()
 
+        self._lstate[env_ids]=torch.randn(len(env_ids),self.args.vae_latent_size)
+        self._hstate[env_ids]=2*torch.randn(len(env_ids),self.args.vae_latent_size)
+
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 0
         #reset obs
+
 
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
@@ -108,36 +95,34 @@ class Test(VecTask):
         if len(env_ids) > 0:
             self.reset_idx(env_ids)
 
-        # self.compute_observations()#self.obs_buf[]
-        # self.compute_reward(self.actions)#self.rew_buf[:], self.reset_buf[:]
+        # completed in step
+        # self.compute_observations() #get self.obs_buf[]
+        # self.compute_reward(self.actions)#get self.rew_buf[:], self.reset_buf[:]
 
         # # reset agents
-        # reset = torch.where(obs_buf[:, 0] < termination_height, torch.ones_like(reset_buf), reset_buf)
-        # reset = torch.where(progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), reset)
+        #### ???
+        reset = torch.where(self.obs_buf[:, 0] < self.termination_height, torch.ones_like(self.reset_buf), self.reset_buf)
+        reset = torch.where(self.progress_buf >= self.max_episode_length - 1, torch.ones_like(self.reset_buf), reset)
+        return reset
 
 
     def step(self, actions: torch.Tensor) :#-> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any]]:
-        """Step the physics of the environment.
+        with torch.no_grad():
+            action_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
+            # apply actions
+            self.pre_physics_step(action_tensor)
+            ####
+            # actions = torch.Tensor(action).unsqueeze(0)
+            mu, sigma, pi, self.rew_buf, self.reset_buf, n_h = self.mdrnn(actions, self._lstate, self._hstate)
+            pi = pi.squeeze()
+            mixt = Categorical(torch.exp(pi)).sample().item()
 
-        Args:
-            actions: actions to apply
-        Returns:
-            Observations, rewards, resets, info
-            Observations are dict of observations (currently only one member called 'obs')
-        """
+            self._lstate = mu[:, mixt, :] + sigma[:, mixt, :] * \
+                           torch.randn_like(mu[:, mixt, :])
+            self._hstate = n_h
 
-        # randomize actions
-        # if self.dr_randomizations.get('actions', None):
-        #     actions = self.dr_randomizations['actions']['noise_lambda'](actions)
-
-        action_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
-        # apply actions
-        self.pre_physics_step(action_tensor)
-
-        # step physics and render each frame
-        # for i in range(self.control_freq_inv):
-        #     self.render()
-        #     self.gym.simulate(self.sim)
+            self.obs_dict["obs"] = self.vae.decoder(self._lstate)
+        ####
 
         # to fix!
         if self.device == 'cpu':
@@ -148,11 +133,7 @@ class Test(VecTask):
                                        torch.ones_like(self.timeout_buf), torch.zeros_like(self.timeout_buf))
 
         # compute observations, rewards, resets, ...
-        self.post_physics_step()
-
-        # randomize observations
-        # if self.dr_randomizations.get('observations', None):
-        #     self.obs_buf = self.dr_randomizations['observations']['noise_lambda'](self.obs_buf)
+        self.reset_buf=self.post_physics_step()
 
         self.extras["time_outs"] = self.timeout_buf.to(self.rl_device)
 
@@ -162,5 +143,15 @@ class Test(VecTask):
         if self.num_states > 0:
             self.obs_dict["states"] = self.get_state()
 
-        return self.obs_dict, self.rew_buf.to(self.rl_device), self.reset_buf.to(self.rl_device), self.extras
+        return self.obs_dict, self.rew_buf.to(self.rl_device), \
+               self.reset_buf.to(self.rl_device), self.extras
 
+    def create_sim(self):
+        return
+
+    def _create_ground_plane(self):
+        return
+
+
+    def _create_envs(self, num_envs, spacing, num_per_row):
+        return

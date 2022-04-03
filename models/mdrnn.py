@@ -52,9 +52,9 @@ class MDRNN(nn.Module):
     def __init__(self, latents, actions, hiddens, gaussians):
         super(MDRNN,self).__init__()
         # print(latents, actions, hiddens, gaussians)
-        self.latents = latents
+        self.latents = latents# z_dim
         self.actions = actions
-        self.hiddens = hiddens
+        self.hiddens = hiddens# hidden units
         self.gaussians = gaussians
 
         self.gmm_linear = nn.Linear(

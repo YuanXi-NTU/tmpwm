@@ -19,11 +19,16 @@ class CusEnv(gym.Env):
         self.mdrnn=MDRNNCell(self.args.model.latent_size,
                              self.args.action_shape,self.args.model.rnn_size,
                              self.args.model.num_mixtures)
-        self.vae.load_state_dict()
+        vae_path='/home/yuanxi20/tmpwm/vae.pth'
+        mdrnn_path='/home/yuanxi20/tmpwm/mdrnn.pth'
+        self.vae.load_state_dict(torch.load(vae_path)['vae'])
+        self.mdrnn.load_state_dict(torch.load(mdrnn_path)['mdrnn'])
+        self.vae.eval()
+        self.mdrnn.eval()
 
     def reset(self):
         self._lstate = torch.randn(1, self.args.vae_latent_size)
-        self._hstate = 2 * [torch.zeros(1, self.model.rnn_size)]
+        self._hstate = 2 * [torch.zeros(1, self.args.model.rnn_size)]
     def step(self, action):
         with torch.no_grad():
             action = torch.Tensor(action).unsqueeze(0)
@@ -31,7 +36,8 @@ class CusEnv(gym.Env):
             pi = pi.squeeze()
             mixt = Categorical(torch.exp(pi)).sample().item()
 
-            self._lstate = mu[:, mixt, :] + sigma[:, mixt, :] * torch.randn_like(mu[:, mixt, :])
+            self._lstate = mu[:, mixt, :] + sigma[:, mixt, :] *\
+                           torch.randn_like(mu[:, mixt, :])
             self._hstate = n_h
 
             self._obs = self.vae.decoder(self._lstate)
