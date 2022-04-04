@@ -15,7 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 
-args=easydict.EasyDict(yaml.load(open('./vae_config.yaml'),yaml.FullLoader))
+args=easydict.EasyDict(yaml.load(open('./wm_config.yaml'),yaml.FullLoader))
 
 '''
 import argparse
@@ -38,8 +38,13 @@ torch.backends.cudnn.benchmark = True
 
 device = torch.device("cuda" if cuda else "cpu")
 
+# params usage
+hidden_size=args.model.vae.hidden_size
+batch_size=args.train.vae.batch_size
+lr=args.train.vae.lr
+epoch=args.epoch
 model = VAE(args.obs_shape, args.obs_shape,
-            args.model.hidden_size).to(device)
+            hidden_size).to(device)
 
 path='/home/yuanxi20/isaacgym/IsaacGymEnvs/isaacgymenvs/buffer_data/res_buffer.pickle'
 dataset_train = RolloutObservationDataset(path, train=True)
@@ -47,13 +52,13 @@ dataset_test = RolloutObservationDataset(path, train=False)
 
 
 train_loader = torch.utils.data.DataLoader(
-    dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=2)
+    dataset_train, batch_size=batch_size, shuffle=True, num_workers=2)
 test_loader = torch.utils.data.DataLoader(
-    dataset_test, batch_size=args.batch_size, shuffle=True, num_workers=2)
+    dataset_test, batch_size=batch_size, shuffle=True, num_workers=2)
 
 
 
-optimizer = optim.Adam(model.parameters(),lr=args.lr)
+optimizer = optim.Adam(model.parameters(),lr=lr)
 scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
 earlystopping = EarlyStopping('min', patience=30)
 
@@ -69,7 +74,7 @@ def loss_function(recon_x, x, mu, logsigma):
     return BCE + KLD,BCE,KLD
 
 
-def train(epoch):
+def train(epochs):
     model.train()
     train_loss = 0
     for batch_idx, data in enumerate(train_loader):
@@ -92,10 +97,10 @@ def train(epoch):
         optimizer.step()
         if batch_idx % 20 == 0:
             print('Train Epoch: {} [{:.0f}%]\tLoss: {:.6f},bce: {:.6f},kld: {:.6f}'.format(
-                epoch,100. * batch_idx / len(train_loader),
+                epochs,100. * batch_idx / len(train_loader),
                 loss.item() / len(obs),bce.item()/len(obs),kld.item()/len(obs)))
     print('====> Epoch: {} Average loss: {:.4f}'.format(
-        epoch, train_loss / len(train_loader.dataset)))
+        epochs, train_loss / len(train_loader.dataset)))
 
 
 def test():
@@ -122,7 +127,7 @@ def test():
 
 cur_best = None
 
-for epoch in range(1, args.epoch + 1):
+for epoch in range(1, epoch + 1):
     train(epoch)
     test_loss = test()
     scheduler.step(test_loss)
@@ -131,10 +136,9 @@ for epoch in range(1, args.epoch + 1):
     is_best = not cur_best or test_loss < cur_best
     if is_best:
         cur_best = test_loss
-        torch.save({'vae':model.state_dict()},'vae.pth')
+        torch.save({'vae':model.state_dict()},'vae_.pth')
 
     '''#used by previous author
-    
     
     # save_checkpoint({
     #     'epoch': epoch,

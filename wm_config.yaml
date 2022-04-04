@@ -1,0 +1,32 @@
+#setting of original env
+action_shape: 8
+obs_shape: 60
+# training params
+seed: 42
+
+model:
+  vae:
+    hidden_size: 64
+  rnn:
+    latent_size: 64
+#      vae_latent_size: 64
+    num_mixtures: 5
+    rnn_size: 256
+    seq_len: 128
+
+train:
+  vae:
+    batch_size: 4096
+    lr: 0.00003
+    epoch: 100
+
+  rnn:
+    batch_size: 1024
+    lr: 0.0003
+    epoch: 100
+
+sim_env:
+  vae_path: /home/yuanxi20/tmpwm/vae.pth
+  mdrnn_path: /home/yuanxi20/tmpwm/mdrnn.pth
+
+

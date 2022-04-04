@@ -19,4 +19,4 @@ usage:
 * collect data(data_collect)
 * trainvae.py
 * trainmdrnn.py
-* train policy with simulate env
+* train policy with simulate env(sim_env)

@@ -51,7 +51,7 @@ class MDRNN(nn.Module):
     """ MDRNN model for multi steps forward """
     def __init__(self, latents, actions, hiddens, gaussians):
         super(MDRNN,self).__init__()
-        # print(latents, actions, hiddens, gaussians)
+
         self.latents = latents# z_dim
         self.actions = actions
         self.hiddens = hiddens# hidden units
