@@ -13,7 +13,8 @@ from data.loaders import RolloutObservationDataset
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-
+from tensorboardX import SummaryWriter
+writer=SummaryWriter('./')
 
 args=easydict.EasyDict(yaml.load(open('./wm_config.yaml'),yaml.FullLoader))
 
@@ -42,7 +43,7 @@ device = torch.device("cuda" if cuda else "cpu")
 hidden_size=args.model.vae.hidden_size
 batch_size=args.train.vae.batch_size
 lr=args.train.vae.lr
-epoch=args.epoch
+epoch=args.train.vae.epoch
 model = VAE(args.obs_shape, args.obs_shape,
             hidden_size).to(device)
 
@@ -52,15 +53,21 @@ dataset_test = RolloutObservationDataset(path, train=False)
 
 
 train_loader = torch.utils.data.DataLoader(
-    dataset_train, batch_size=batch_size, shuffle=True, num_workers=2)
+    dataset_train, batch_size=batch_size, shuffle=True, num_workers=4)
 test_loader = torch.utils.data.DataLoader(
-    dataset_test, batch_size=batch_size, shuffle=True, num_workers=2)
+    dataset_test, batch_size=batch_size, shuffle=True, num_workers=4)
 
 
 
 optimizer = optim.Adam(model.parameters(),lr=lr)
 scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
 earlystopping = EarlyStopping('min', patience=30)
+
+global batch_num_train
+global batch_num_test
+
+batch_num_train=0
+batch_num_test=0
 
 def loss_function(recon_x, x, mu, logsigma):
     """ VAE loss function
@@ -71,10 +78,11 @@ def loss_function(recon_x, x, mu, logsigma):
     """
     BCE = F.mse_loss(recon_x, x)
     KLD = -0.5 * torch.sum(1 + 2 * logsigma - mu.pow(2) - (2 * logsigma).exp())
+    
     return BCE + KLD,BCE,KLD
 
 
-def train(epochs):
+def train(epochs,logger_cnt):
     model.train()
     train_loss = 0
     for batch_idx, data in enumerate(train_loader):
@@ -92,6 +100,11 @@ def train(epochs):
         # loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
         loss,bce,kld = loss_function(recon_batch, obs, mu, logvar)
 
+        writer.add_scalar('losses/train_loss', loss.item(), logger_cnt)
+        writer.add_scalar('losses/train_bce', bce.item(), logger_cnt)
+        writer.add_scalar('losses/train_kld', kld.item(), logger_cnt)
+        logger_cnt += 1
+        
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
@@ -101,9 +114,10 @@ def train(epochs):
                 loss.item() / len(obs),bce.item()/len(obs),kld.item()/len(obs)))
     print('====> Epoch: {} Average loss: {:.4f}'.format(
         epochs, train_loss / len(train_loader.dataset)))
+    return logger_cnt
 
 
-def test():
+def test(logger_cnt):
     model.eval()
     test_loss = 0
     with torch.no_grad():
@@ -118,18 +132,26 @@ def test():
             optimizer.zero_grad()
             recon_batch, mu, logvar = model(obs)
             loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
+
+            writer.add_scalar('losses/test_loss', loss.item(), logger_cnt)
+            writer.add_scalar('losses/test_bce', bce.item(), logger_cnt)
+            writer.add_scalar('losses/test_kld', kld.item(), logger_cnt)
+            logger_cnt += 1
+
             test_loss+=loss.item()
 
     test_loss /= len(test_loader.dataset)
     print('====> Test set loss: {:.4f},bce&kld: {:.4f},{:.4f}'.format(test_loss,bce,kld))
-    return test_loss
+    return test_loss,logger_cnt
 
 
 cur_best = None
-
+logger_test_cnt = 0
+logger_train_cnt = 0
 for epoch in range(1, epoch + 1):
-    train(epoch)
-    test_loss = test()
+
+    logger_train_cnt=train(epoch,logger_train_cnt)
+    test_loss,logger_test_cnt= test(logger_test_cnt)
     scheduler.step(test_loss)
     earlystopping.step(test_loss)
 

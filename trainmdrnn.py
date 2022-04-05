@@ -16,6 +16,8 @@ from data.loaders import RolloutSequenceDataset
 from models.vae import VAE
 from models.mdrnn import MDRNN, gmm_loss
 
+from tensorboardX import SummaryWriter
+writer=SummaryWriter('./')
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -36,7 +38,7 @@ parser.add_argument('--include_reward', action='store_true',
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-args=easydict.EasyDict(yaml.load(open('./rnn_config.yaml'),yaml.FullLoader))
+args=easydict.EasyDict(yaml.load(open('./wm_config.yaml'),yaml.FullLoader))
 # params usage
 vae_hidden_size=args.model.vae.hidden_size
 latent_size=args.model.rnn.latent_size
@@ -128,7 +130,7 @@ def get_loss(latent_obs, action, reward, done,
     return dict(gmm=gmm, bce=bce, mse=mse, loss=loss)
 
 
-def data_pass(epochs, train):
+def data_pass(epochs, train,logger_cnt):
     """ One pass through the data """
     if train:
         mdrnn.train()
@@ -142,8 +144,9 @@ def data_pass(epochs, train):
     cum_gmm = 0
     cum_bce = 0
     cum_mse = 0
-
-    pbar = tqdm(total=len(loader.dataset), desc="Epoch {}".format(epochs))
+    dataset_len=len(loader.dataset)
+    pbar = tqdm(total=dataset_len, desc="Epoch {}".format(epochs))
+    '''
     for i, data in enumerate(loader):
         obs, action, reward, done, next_obs = [arr.to(device) for arr in data]
 
@@ -166,23 +169,39 @@ def data_pass(epochs, train):
         cum_gmm += losses['gmm'].item()
         cum_bce += losses['bce'].item()
         cum_mse += losses['mse'].item()
+        if train:
+            writer.add_scalar('losses/train_loss', losses['loss'].item(), logger_cnt)
+            writer.add_scalar('losses/train_bce', losses['bce'].item(), logger_cnt)
+            writer.add_scalar('losses/train_gmm', losses['gmm'].item(), logger_cnt)
+            writer.add_scalar('losses/train_mse', losses['mse'].item(), logger_cnt)
+        else:
+            writer.add_scalar('losses/test_loss', losses['loss'].item(), logger_cnt)
+            writer.add_scalar('losses/test_bce', losses['bce'].item(), logger_cnt)
+            writer.add_scalar('losses/test_gmm', losses['gmm'].item(), logger_cnt)
+            writer.add_scalar('losses/test_mse', losses['mse'].item(), logger_cnt)
+        logger_cnt += 1
 
         pbar.set_postfix_str("loss={loss:10.6f} bce={bce:10.6f} "
                              "gmm={gmm:10.6f} mse={mse:10.6f}".format(
                                  loss=cum_loss / (i + 1), bce=cum_bce / (i + 1),
                                  gmm=cum_gmm / vae_hidden_size / (i + 1), mse=cum_mse / (i + 1)))
         pbar.update(batch_size)
+    '''
     pbar.close()
-    return cum_loss * batch_size / len(loader.dataset)
+    print(len(loader.dataset))
+    return cum_loss * batch_size / dataset_len,logger_cnt
 
 
-train = partial(data_pass, train=True)
-test = partial(data_pass, train=False)
+logger_test_cnt = 0
+logger_train_cnt = 0
+
+train = partial(data_pass, train=True,logger_cnt=logger_train_cnt)
+test = partial(data_pass, train=False,logger_cnt=logger_test_cnt)
 
 cur_best = None
 for e in range(epoch):
-    train(e)
-    test_loss = test(e)
+    _,logger_train_cnt=train(e)
+    test_loss,logger_test_cnt = test(e)
     scheduler.step(test_loss)
     # earlystopping.step(test_loss)
 
