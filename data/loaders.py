@@ -41,7 +41,7 @@ class RolloutSequenceDataset(Dataset): # pylint: disable=too-few-public-methods
         self.buffer=pickle.load(open(path,'rb'))
         self.buffer={key:self.buffer[key].transpose(0,1).contiguous() for key in list(self.buffer.keys())}#1000,4096,_->4096,1000,_
         split_idx=int(0.8*self.buffer['obs'].shape[0])
-        self.buffer={key:self.buffer[key].transpose(0,1) for key in list(self.buffer.keys())}#timesteps,num_envs,__->num_envs,timesteps,__
+        # self.buffer={key:self.buffer[key].transpose(0,1) for key in list(self.buffer.keys())}#timesteps,num_envs,__->num_envs,timesteps,__
         if train:
             self.buffer={key:self.buffer[key][:split_idx] for key in list(self.buffer.keys())}
         else:

@@ -5,16 +5,15 @@ from torch import optim
 from torch.nn import functional as F
 import easydict,yaml
 
-# from utils.misc import LSIZE, RED_SIZE
 from models.vae import VAE
 from utils.learning import EarlyStopping
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from data.loaders import RolloutObservationDataset
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 from tensorboardX import SummaryWriter
-writer=SummaryWriter('./')
+writer=SummaryWriter('./log/')
 
 args=easydict.EasyDict(yaml.load(open('./wm_config.yaml'),yaml.FullLoader))
 
@@ -23,12 +22,6 @@ import argparse
 parser = argparse.ArgumentParser(description='VAE Trainer')
 parser.add_argument('--batch-size', type=int, default=4096, metavar='N',
                     help='input batch size for training (default: 32)')
-parser.add_argument('--epochs', type=int, default=40, metavar='N',
-                    help='number of epochs to train (default: 1000)')
-parser.add_argument('--hidden-size', type=int, default=64, metavar='N',
-                    help='number of epochs to train (default: 1000)')
-parser.add_argument('--logdir', type=str, help='Directory where results are logged')
-args.update(vars(parser.parse_args()))
 '''
 
 
@@ -46,8 +39,7 @@ lr=args.train.vae.lr
 epoch=args.train.vae.epoch
 model = VAE(args.obs_shape, args.obs_shape,
             hidden_size).to(device)
-
-path='/home/yuanxi20/isaacgym/IsaacGymEnvs/isaacgymenvs/buffer_data/res_buffer.pickle'
+path='/data/yuanxi20/res_buffer.pickle'
 dataset_train = RolloutObservationDataset(path, train=True)
 dataset_test = RolloutObservationDataset(path, train=False)
 
@@ -60,8 +52,8 @@ test_loader = torch.utils.data.DataLoader(
 
 
 optimizer = optim.Adam(model.parameters(),lr=lr)
-scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
-earlystopping = EarlyStopping('min', patience=30)
+scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.3, patience=2)
+earlystopping = EarlyStopping('min', patience=10)
 
 global batch_num_train
 global batch_num_test
@@ -76,9 +68,10 @@ def loss_function(recon_x, x, mu, logsigma):
     # https://arxiv.org/abs/1312.6114
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     """
-    BCE = F.mse_loss(recon_x, x)
-    KLD = -0.5 * torch.sum(1 + 2 * logsigma - mu.pow(2) - (2 * logsigma).exp())
-    
+    # BCE = F.mse_loss(recon_x, x)
+    BCE=torch.mean((recon_x-x)**2)*100
+    # KLD = -0.5 * torch.sum(1 + 2 * logsigma - mu.pow(2) - (2 * logsigma).exp())
+    KLD = -0.5 * torch.mean(1 + 2 * logsigma - mu.pow(2) - (2 * logsigma).exp())*100
     return BCE + KLD,BCE,KLD
 
 
@@ -87,19 +80,19 @@ def train(epochs,logger_cnt):
     train_loss = 0
     for batch_idx, data in enumerate(train_loader):
 
-        obs,action,next_obs=data[0],data[1],data[2]
-        
+        # obs,action,next_obs=data[0],data[1],data[2]
         # input=torch.cat([obs,action],dim=1)
         # input,next_obs=input.to(device),next_obs.to(device)
         # obs,next_obs=obs.to(device),next_obs.to(device)
+
+        obs=data[0]        
         obs=obs.to(device)
-        obs,next_obs=obs.to(device),next_obs.to(device)
 
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(obs)
         # loss,bce,kld = loss_function(recon_batch, next_obs, mu, logvar)
+        
         loss,bce,kld = loss_function(recon_batch, obs, mu, logvar)
-
         writer.add_scalar('losses/train_loss', loss.item(), logger_cnt)
         writer.add_scalar('losses/train_bce', bce.item(), logger_cnt)
         writer.add_scalar('losses/train_kld', kld.item(), logger_cnt)
@@ -119,7 +112,7 @@ def train(epochs,logger_cnt):
 
 def test(logger_cnt):
     model.eval()
-    test_loss = 0
+    test_loss,test_kld,test_bce = [],[],[]
     with torch.no_grad():
         for data in test_loader:
 
@@ -138,9 +131,13 @@ def test(logger_cnt):
             writer.add_scalar('losses/test_kld', kld.item(), logger_cnt)
             logger_cnt += 1
 
-            test_loss+=loss.item()
+            test_loss.append(loss.item())
+            test_kld.append(kld.item())
+            test_bce.append(bce.item())
 
-    test_loss /= len(test_loader.dataset)
+    test_loss =torch.mean(torch.tensor(test_loss))
+    test_kld =torch.mean(torch.tensor(test_kld))
+    test_bce =torch.mean(torch.tensor(test_bce))
     print('====> Test set loss: {:.4f},bce&kld: {:.4f},{:.4f}'.format(test_loss,bce,kld))
     return test_loss,logger_cnt
 

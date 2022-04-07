@@ -17,8 +17,8 @@ from models.vae import VAE
 from models.mdrnn import MDRNN, gmm_loss
 
 from tensorboardX import SummaryWriter
-writer=SummaryWriter('./')
 
+import  random
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -39,6 +39,11 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 args=easydict.EasyDict(yaml.load(open('./wm_config.yaml'),yaml.FullLoader))
+
+writer=SummaryWriter('./log/')
+logger_test_cnt = 0
+logger_train_cnt = 0
+
 # params usage
 vae_hidden_size=args.model.vae.hidden_size
 latent_size=args.model.rnn.latent_size
@@ -52,17 +57,17 @@ epoch=args.train.rnn.epoch
 
 # set model
 vae= VAE(args.obs_shape,args.obs_shape,vae_hidden_size).to(device)
-vae_path='./vae.pth'
+vae_path='./vae_44.pth'
 vae.load_state_dict(torch.load(vae_path)['vae'])
 mdrnn = MDRNN(latent_size, args.action_shape, rnn_size, num_mixtures)
 mdrnn.to(device)
 
 optimizer = torch.optim.RMSprop(mdrnn.parameters(), lr=lr, alpha=.9)
-scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
+scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.3, patience=3)
 # earlystopping = EarlyStopping('min', patience=30)
 
-path='/home/yuanxi20/isaacgym/IsaacGymEnvs/isaacgymenvs/buffer_data/res_buffer.pickle'
-
+#path='/home/yuanxi20/isaacgym/IsaacGymEnvs/isaacgymenvs/buffer_data/res_buffer.pickle'
+path='/home/yuanxi20/res_buffer.pickle'
 train_loader = DataLoader(
     RolloutSequenceDataset(path, seq_len, train=True),
     batch_size=batch_size, num_workers=4, shuffle=True)
@@ -117,6 +122,9 @@ def get_loss(latent_obs, action, reward, done,
     gmm = gmm_loss(latent_next_obs, mus, sigmas, logpi)
     bce = f.binary_cross_entropy_with_logits(done_pred, done)
     mse = f.mse_loss(rew_pred, reward)
+    # mse = torch.sum((rew_pred - reward)**2)
+    if random.random()<0.005:
+        print('test_result:\n \t',reward[0,:10],'\n\t',rew_pred[0,:10])
     scale = vae_hidden_size + 2
     '''
     if include_reward:
@@ -130,6 +138,7 @@ def get_loss(latent_obs, action, reward, done,
     return dict(gmm=gmm, bce=bce, mse=mse, loss=loss)
 
 
+
 def data_pass(epochs, train,logger_cnt):
     """ One pass through the data """
     if train:
@@ -139,14 +148,13 @@ def data_pass(epochs, train,logger_cnt):
         mdrnn.eval()
         loader = test_loader
 
-
+    print(epoch,logger_cnt)
     cum_loss = 0
     cum_gmm = 0
     cum_bce = 0
     cum_mse = 0
     dataset_len=len(loader.dataset)
     pbar = tqdm(total=dataset_len, desc="Epoch {}".format(epochs))
-    '''
     for i, data in enumerate(loader):
         obs, action, reward, done, next_obs = [arr.to(device) for arr in data]
 
@@ -186,22 +194,19 @@ def data_pass(epochs, train,logger_cnt):
                                  loss=cum_loss / (i + 1), bce=cum_bce / (i + 1),
                                  gmm=cum_gmm / vae_hidden_size / (i + 1), mse=cum_mse / (i + 1)))
         pbar.update(batch_size)
-    '''
     pbar.close()
-    print(len(loader.dataset))
     return cum_loss * batch_size / dataset_len,logger_cnt
 
 
-logger_test_cnt = 0
-logger_train_cnt = 0
+
 
 train = partial(data_pass, train=True,logger_cnt=logger_train_cnt)
 test = partial(data_pass, train=False,logger_cnt=logger_test_cnt)
 
 cur_best = None
 for e in range(epoch):
-    _,logger_train_cnt=train(e)
-    test_loss,logger_test_cnt = test(e)
+    _,logger_train_cnt=data_pass(e,train=True,logger_cnt=logger_train_cnt)
+    test_loss,logger_test_cnt =data_pass(e,train=False,logger_cnt=logger_test_cnt)
     scheduler.step(test_loss)
     # earlystopping.step(test_loss)
 

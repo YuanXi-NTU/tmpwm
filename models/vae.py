@@ -30,18 +30,24 @@ class StateEncoder(nn.Module):
         super(StateEncoder, self).__init__()
         self.latent_size = latent_size
         self.input_size= input_size
+        self.bn1=nn.BatchNorm1d(input_size)
+        self.bn2=nn.BatchNorm1d(latent_size)
+
         self.fc1 = nn.Linear(self.input_size, self.latent_size)
         self.fc2 = nn.Linear(self.latent_size, self.latent_size)
-        self.fc3 = nn.Linear(self.latent_size, self.latent_size)
         self.fc_mu = nn.Linear(self.latent_size, self.latent_size)
         self.fc_logsigma  = nn.Linear(self.latent_size, self.latent_size)
 
     def forward(self, x):
+        cur_shape=x.shape
+        # x=self.bn1(x.view(-1,self.input_size))
+        x=self.bn1(x)
         x=F.relu(self.fc1(x))
-        x=F.relu(self.fc2(x))
-        x=F.relu(self.fc3(x))
-        mu = self.fc_mu(x)
-        logsigma = self.fc_logsigma(x)
+        x=self.bn2(x)
+        x=self.fc2(x)
+        mu = F.sigmoid(self.fc_mu(x))
+        # mu = F.sigmoid(self.fc_mu(x)).view(cur_shape[0],self.latent_size)
+        logsigma = F.sigmoid(self.fc_logsigma(x)).view(cur_shape[0],self.latent_size)
 
         return mu, logsigma
 
@@ -51,14 +57,22 @@ class StateDecoder(nn.Module):
         self.output_size= output_size
         self.latent_size = latent_size
         self.fc1 = nn.Linear(self.latent_size, self.latent_size)
-        self.fc2 = nn.Linear(self.latent_size, self.latent_size)
+        self.bn1=nn.BatchNorm1d(output_size)
+        self.bn2=nn.BatchNorm1d(latent_size)
+        # self.fc2 = nn.Linear(self.latent_size, self.latent_size)
         self.fc3 = nn.Linear(self.latent_size, self.output_size)
 
 
-    def forward(self, x): 
+    def forward(self, x):
+        cur_shape=x.shape
         x=F.relu(self.fc1(x))
-        x=F.relu(self.fc2(x))
-        x=F.relu(self.fc3(x))
+        # x=F.relu(self.fc1(x.view(-1,self.latent_size)))
+        x=self.bn2(x)
+        # x=F.relu(self.fc2(x))
+        x=self.fc3(x)
+        # x=self.bn1(x).view(cur_shape[0],cur_shape[1],self.output_size)
+        x=self.bn1(x)
+        # x=self.bn1(x).view(cur_shape[0],self.output_size)
         reconstruction=F.sigmoid(x)
         return reconstruction
 

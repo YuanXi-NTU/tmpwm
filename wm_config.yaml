@@ -16,17 +16,17 @@ model:
 
 train:
   vae:
-    batch_size: 4096
-    lr: 0.00003
-    epoch: 100
+    batch_size: 16384 #4096
+    lr: 0.3
+    epoch: 200
 
   rnn:
-    batch_size: 1024
-    lr: 0.0003
+    batch_size: 4096
+    lr: 0.0001
     epoch: 100
 
 sim_env:
-  vae_path: /home/yuanxi20/tmpwm/vae.pth
-  mdrnn_path: /home/yuanxi20/tmpwm/mdrnn.pth
+  vae_path: /data/yuanxi20/tmpwm/vae_44.pth
+  mdrnn_path: /data/yuanxi20/tmpwm/mdrnn.pth
 
 
