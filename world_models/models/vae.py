@@ -39,15 +39,13 @@ class StateEncoder(nn.Module):
         self.fc_logsigma  = nn.Linear(self.latent_size, self.latent_size)
 
     def forward(self, x):
-        cur_shape=x.shape
-        # x=self.bn1(x.view(-1,self.input_size))
+        x=x.view(-1,60)
         x=self.bn1(x)
         x=F.relu(self.fc1(x))
         x=self.bn2(x)
         x=self.fc2(x)
         mu = F.sigmoid(self.fc_mu(x))
-        # mu = F.sigmoid(self.fc_mu(x)).view(cur_shape[0],self.latent_size)
-        logsigma = F.sigmoid(self.fc_logsigma(x)).view(cur_shape[0],self.latent_size)
+        logsigma = F.sigmoid(self.fc_logsigma(x))
 
         return mu, logsigma
 
@@ -57,23 +55,15 @@ class StateDecoder(nn.Module):
         self.output_size= output_size
         self.latent_size = latent_size
         self.fc1 = nn.Linear(self.latent_size, self.latent_size)
-        self.bn1=nn.BatchNorm1d(output_size)
-        self.bn2=nn.BatchNorm1d(latent_size)
-        # self.fc2 = nn.Linear(self.latent_size, self.latent_size)
-        self.fc3 = nn.Linear(self.latent_size, self.output_size)
+        self.fc2 = nn.Linear(self.latent_size, self.output_size)
+
 
 
     def forward(self, x):
         cur_shape=x.shape
         x=F.relu(self.fc1(x))
-        # x=F.relu(self.fc1(x.view(-1,self.latent_size)))
-        x=self.bn2(x)
-        # x=F.relu(self.fc2(x))
-        x=self.fc3(x)
-        # x=self.bn1(x).view(cur_shape[0],cur_shape[1],self.output_size)
-        x=self.bn1(x)
-        # x=self.bn1(x).view(cur_shape[0],self.output_size)
-        reconstruction=F.sigmoid(x)
+        x=self.fc2(x)
+        reconstruction=F.elu(x)
         return reconstruction
 
 
@@ -83,13 +73,14 @@ class VAE(nn.Module):
         self.encoder = StateEncoder(input_size, latent_size)
         self.decoder = StateDecoder(output_size, latent_size)
         initialize_parameters(self.named_parameters(), 'orthogonal')
-
-
+        self.bn=nn.BatchNorm1d(latent_size)
     def forward(self, x):
         mu, logsigma = self.encoder(x)
+        # mu=self.bn(mu)
         sigma = logsigma.exp()
+
         eps = torch.randn_like(sigma)
         z = eps.mul(sigma).add_(mu)
-
-        recon_x = self.decoder(z)
+        recon_x = self.decoder(z)*self.encoder.bn1.running_var+\
+                  self.encoder.bn1.running_mean
         return recon_x, mu, logsigma

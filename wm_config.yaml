@@ -3,12 +3,12 @@ action_shape: 8
 obs_shape: 60
 # training params
 seed: 42
-
+data_path: /data/yuanxi20/t2.pic #tmp_buffer.pickle
 model:
   vae:
-    hidden_size: 64
+    hidden_size: 128
   rnn:
-    latent_size: 64
+    latent_size: 128
 #      vae_latent_size: 64
     num_mixtures: 5
     rnn_size: 256
@@ -16,17 +16,27 @@ model:
 
 train:
   vae:
-    batch_size: 16384 #4096
-    lr: 0.3
+    batch_size: 4096
+    lr: 0.001
     epoch: 200
 
   rnn:
-    batch_size: 4096
+    batch_size: 1024
     lr: 0.0001
     epoch: 100
 
 sim_env:
-  vae_path: /data/yuanxi20/tmpwm/vae_44.pth
+  vae_path: /data/yuanxi20/tmpwm/vae.pth
   mdrnn_path: /data/yuanxi20/tmpwm/mdrnn.pth
+
+
+# logs, load model
+log_path: ./log/
+
+loads:
+  vae: True
+  vae_path: ./vae.pth
+  mdrnn: False
+  mdrnn_path: ./mdrnn.pth
 
 

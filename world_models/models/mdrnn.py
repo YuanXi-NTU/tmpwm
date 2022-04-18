@@ -36,7 +36,6 @@ def gmm_loss(batch, mus, sigmas, logpi, reduce=True): # pylint: disable=too-many
     g_log_probs = logpi + torch.sum(g_log_probs, dim=-1)
     max_log_probs = torch.max(g_log_probs, dim=-1, keepdim=True)[0]
     g_log_probs = g_log_probs - max_log_probs
-
     g_probs = torch.exp(g_log_probs)
     probs = torch.sum(g_probs, dim=-1)
 
@@ -98,7 +97,6 @@ class MDRNN(nn.Module):
         rs = gmm_outs[:, :, -2]
 
         ds = gmm_outs[:, :, -1]
-
         return mus, sigmas, logpi, rs, ds
 
 
