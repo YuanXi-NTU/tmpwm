@@ -1,0 +1,29 @@
+seed: 42
+
+n_minibatch: 4096
+learning_rate: 1.e-04
+weight_decay: 1.e-4
+max_epoch: 100
+
+save_model: True
+load_model: False
+
+train_data_path: /home/yuanxi20/delan_data/train_full_delan.pickle
+test_data_path: /home/yuanxi20/delan_data/test_full_delan.pickle
+
+n_width: 128
+n_depth: 2
+diagonal_epsilon: 0.01
+activation: SoftPlus
+b_init: 1.e-4
+b_diag_init: 0.001
+w_init: xavier_normal
+gain_hidden: 1.4142135623730 #np.sqrt(2.)
+gain_output: 0.1
+
+rew_shape: 7
+pos_shape: 8
+vel_shape: 8
+tau_shape: 32
+dof: 8
+
